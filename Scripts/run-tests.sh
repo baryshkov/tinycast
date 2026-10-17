@@ -64,18 +64,22 @@ run() {
 
 L=Tinycast/Features/Launcher/Model
 run fuzz-test              $L/SearchRelevance.swift
-run file-search-test       $L/SearchRelevance.swift \
-                           Tinycast/Features/FileSearch/Model/*.swift
-run file-search-session-test Tinycast/Platform/Signposts.swift \
-                             $L/SearchRelevance.swift \
-                             Tinycast/Features/FileSearch/Model/*.swift \
-                             Tinycast/Features/FileSearch/Service/*.swift
-run ranking-test           $L/SearchRelevance.swift $L/LauncherRankingStore.swift
+FS=Tinycast/Features/FileSearch
+FILE_INDEX="$FS/Service/FileIndex.swift $FS/Service/FileIndexSnapshot.swift $FS/Service/FileIndexCrawler.swift"
+run file-search-test       $FS/Model/*.swift
+run file-index-test        $FS/Model/*.swift $FILE_INDEX
+run file-search-session-test $FS/Model/*.swift $FS/Service/FileSearchSession.swift $FILE_INDEX
+run ranking-test           $L/SearchRelevance.swift $L/ScriptRomanization.swift \
+                           $L/LauncherMatch.swift $L/LauncherRankingStore.swift
 run scopes-test            $L/SearchScopes.swift
+run app-quit-test          Tinycast/Features/Launcher/Service/AppLauncher.swift
 run favorites-test         $L/FavoriteSlots.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run clipboard-test         Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift
+run clipboard-pasteboard-test Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/Clipboard/Service/Paster.swift
 run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift
@@ -88,7 +92,8 @@ run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/Palette/PalettePlacement.swift
 run scroll-reveal-test     Tinycast/DesignSystem/Scrolling/SelectionReveal.swift
-run hover-arming-test      Tinycast/Palette/HoverArming.swift \
+run hover-arming-test      Tinycast/Features/FileSearch/Model/FileSearchFilter.swift \
+                           Tinycast/Palette/HoverArming.swift \
                            Tinycast/Palette/PaletteState.swift \
                            Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
@@ -102,7 +107,7 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tinycast/Features/Launcher/Model/CommandID.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/SystemActions/Model/SystemAction.swift \
-                           Tinycast/Features/WindowManagement/WindowCommand.swift
+                           Tinycast/Features/WindowManagement/Model/WindowCommand.swift
 run callout-test           Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/Features/HotKeys/UI/CalloutPlacement.swift
@@ -115,9 +120,49 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            Tinycast/Features/Extensions/Service/ExtensionIconCache.swift
 run system-action-test     Tinycast/Features/SystemActions/Model/SystemAction.swift
 run volume-test            Tinycast/Features/SystemActions/Model/VolumeLevel.swift
-run window-command-test    Tinycast/Features/WindowManagement/WindowCommand.swift \
-                           Tinycast/Features/WindowManagement/WindowLayout.swift \
-                           Tinycast/Features/WindowManagement/WindowActionMemory.swift
+run window-command-test    Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowPlacementEngine.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowActionMemory.swift
+run window-preset-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowShortcutPreset.swift \
+                           Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeyBinding.swift \
+                           Tinycast/Features/HotKeys/Model/HyperKey.swift \
+                           Tinycast/Features/HotKeys/Service/KeyShortcut.swift
+run space-gesture-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/SpaceGesture.swift
+run window-layout-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowPlacementEngine.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutAnchor.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutDisplay.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayout.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutGeometry.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutPlan.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutStore.swift \
+                           Tinycast/Features/WindowManagement/Model/CustomWindowSize.swift \
+                           Tinycast/Features/WindowManagement/Model/CustomWindowSizeStore.swift
+run window-room-test       Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowPlacementEngine.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutAnchor.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutDisplay.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayout.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutGeometry.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutPlan.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomLayoutKind.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomLayoutEngine.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomGrid.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomWindow.swift \
+                           Tinycast/Features/WindowManagement/Model/Room.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomWindowMatcher.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomParking.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomPlan.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomArrangement.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomStore.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomMinimumSizeStore.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomParkingLedger.swift
 run custom-command-test    Tinycast/Features/CustomCommands/Model/CustomCommand.swift \
                            Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift
 run uninstall-test         Tinycast/Features/Uninstall/Model/UninstallTarget.swift \
@@ -144,7 +189,10 @@ run notes-editor-test      Tinycast/Platform/Signposts.swift \
                            Tinycast/Features/Notes/Model/NoteDocument.swift \
                            Tinycast/Features/Notes/UI/NoteTextView.swift \
                            Tinycast/Features/Notes/UI/NoteEditorView.swift
-run raycast-test           Tinycast/Features/Backup/Model/RaycastFormat.swift \
+run raycast-test           Tinycast/Features/Backup/Service/RaycastDecoder.swift \
+                           Tinycast/Features/Backup/Service/Scrypt.swift \
+                           Tinycast/Platform/Compression/HexData.swift \
+                           Tinycast/Features/Backup/Model/RaycastFormat.swift \
                            Tinycast/Features/Backup/Model/RaycastV1Decoder.swift \
                            Tinycast/Platform/Compression/Zlib.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
@@ -172,6 +220,28 @@ run ext-test               -parse-as-library \
                            Tinycast/Platform/Compression/Zlib.swift
 run settings-history-test  Tinycast/Features/Settings/SettingsTab.swift \
                            Tinycast/Features/Settings/SettingsHistory.swift
+
+run window-switch-test     $L/SearchRelevance.swift Tinycast/Features/WindowSwitcher/Model/*.swift
+run backup-archive-test    Tinycast/Platform/AppPaths.swift Tinycast/Features/Backup/Model/BackupArchive.swift \
+                           Tinycast/Features/Backup/Model/BackupBundle.swift Tinycast/Features/Backup/Model/BackupCategory.swift \
+                           Tinycast/Features/Backup/Model/BackupClipboardItem.swift Tinycast/Features/Backup/Model/BackupManifest.swift \
+                           Tinycast/Features/Backup/Service/BackupStaging.swift
+
+run settings-file-port-test Tinycast/Features/Settings/Model/*.swift \
+                            Tinycast/Features/Settings/Service/*.swift Tinycast/Platform/AppPaths.swift
+run backup-clipboard-port-test Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift
+
+run raycast3-test -O        Tinycast/Features/Backup/Model/RaycastFormat.swift \
+                            Tinycast/Features/Backup/Service/RaycastDecoder.swift \
+                            Tinycast/Features/Backup/Service/Scrypt.swift Tinycast/Platform/Compression/Zlib.swift \
+                            Tinycast/Platform/Compression/HexData.swift \
+                            Tinycast/Features/Clipboard/Model/RaycastClipboardImport.swift \
+                            Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift
+
+run microphone-mute-test   Tinycast/Features/SystemActions/Service/SystemActionFailure.swift \
+                            Tinycast/Features/SystemActions/Service/SystemActionRunner+Microphone.swift
 
 if [ "$emit_db" -eq 1 ]; then
     printf ']\n' >> "$DB"

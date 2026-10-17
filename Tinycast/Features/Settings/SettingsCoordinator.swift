@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Settings' lifecycle, independent of the palette: neither surface opens or closes the other.
 @MainActor
@@ -7,6 +8,7 @@ final class SettingsCoordinator {
     /// Environment injection only — never for state this type owns.
     private unowned let core: AppCore
     /// The open window's session; the window's chrome and view tree own it, so this self-nils.
+    private var editorPresenter: SettingsEditorPresenter?
     private weak var navigation: SettingsNavigationState?
 
     init(core: AppCore) {
@@ -24,16 +26,20 @@ final class SettingsCoordinator {
         }
         let navigation = SettingsNavigationState(tab: tab)
         self.navigation = navigation
+        let editorPresenter = SettingsEditorPresenter(core: core, navigation: navigation)
+        self.editorPresenter = editorPresenter
         window.show(chrome: SettingsToolbarController(navigation: navigation)) {
             SettingsSplitViewController(
                 sidebar: inject(SettingsSidebarView(), navigation),
                 detail: inject(SettingsDetailView(), navigation))
         }
+        editorPresenter.attach(to: window.window)
     }
 
     /// Both columns are hosted separately, so each needs the whole environment.
     private func inject(_ view: some View, _ navigation: SettingsNavigationState) -> some View {
         view
+            .environment(\.settingsEditorPresenter, editorPresenter)
             .environment(navigation)
             .environment(core)
             .environment(core.settings)
@@ -44,6 +50,11 @@ final class SettingsCoordinator {
             .environment(core.customCommands)
             .environment(core.snippetsStore)
             .environment(core.quicklinks)
+            .environment(core.windowLayouts)
+            .environment(core.rooms)
+            .environment(core.roomCoordinator)
+            .environment(core.customWindowSizes)
+            .environment(core.customWindowSizeCoordinator)
             // Propagates down so the window's materials show through, not each list's backing.
             .scrollContentBackground(.hidden)
     }
@@ -58,6 +69,7 @@ final class SettingsCoordinator {
 
     /// ⌘Q and the window's close button land here; the app itself keeps running.
     func closeSettings() {
+        editorPresenter?.dismissAll()
         window.close()
     }
 

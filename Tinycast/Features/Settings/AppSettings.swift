@@ -127,6 +127,33 @@ final class AppSettings {
     }
 
     // Feature switches, off out of the box, and off means fully off.
+    var windowLayoutsShowInLauncher: Bool {
+        didSet { defaults.set(windowLayoutsShowInLauncher, forKey: "windowLayoutsShowInLauncher") }
+    }
+    var windowRoomsShowInLauncher: Bool {
+        didSet { defaults.set(windowRoomsShowInLauncher, forKey: "windowRoomsShowInLauncher") }
+    }
+    var navigationEnabled: Bool { didSet { defaults.set(navigationEnabled, forKey: "navigationEnabled") } }
+    var windowCycle: WindowCycle {
+        didSet { defaults.set(windowCycle.rawValue, forKey: "windowCycle") }
+    }
+    var interfaceSize: InterfaceSize {
+        didSet { defaults.set(interfaceSize.rawValue, forKey: "interfaceSize") }
+    }
+    var settingsFileEnabled: Bool {
+        didSet { defaults.set(settingsFileEnabled, forKey: "settingsFileEnabled") }
+    }
+    var rootSearchSensitivity: SearchSensitivity {
+        didSet { defaults.set(rootSearchSensitivity.rawValue, forKey: "rootSearchSensitivity") }
+    }
+    var launcherShowsSuggestions: Bool {
+        didSet { defaults.set(launcherShowsSuggestions, forKey: "launcherShowsSuggestions") }
+    }
+
+    var fileSearchShowInLauncher: Bool {
+        didSet { defaults.set(fileSearchShowInLauncher, forKey: "fileSearchShowInLauncher") }
+    }
+
     var fileSearchEnabled: Bool {
         didSet { defaults.set(fileSearchEnabled, forKey: Key.fileSearchEnabled.rawValue) }
     }
@@ -309,6 +336,18 @@ final class AppSettings {
         // A half-written pair is no position at all, so both coordinates have to be there.
         palettePosition = (defaults.array(forKey: Key.palettePosition.rawValue) as? [Double])
             .flatMap { $0.count == 2 ? CGPoint(x: $0[0], y: $0[1]) : nil }
+        windowLayoutsShowInLauncher = defaults.object(forKey: "windowLayoutsShowInLauncher") as? Bool ?? true
+        windowRoomsShowInLauncher = defaults.object(forKey: "windowRoomsShowInLauncher") as? Bool ?? true
+        navigationEnabled = defaults.object(forKey: "navigationEnabled") as? Bool ?? false
+        windowCycle = defaults.string(forKey: "windowCycle").flatMap(WindowCycle.init(rawValue:)) ?? .sizes
+        interfaceSize =
+            defaults.string(forKey: "interfaceSize").flatMap(InterfaceSize.init(rawValue:)) ?? .standard
+        settingsFileEnabled = defaults.bool(forKey: "settingsFileEnabled")
+        rootSearchSensitivity =
+            defaults.string(forKey: "rootSearchSensitivity")
+            .flatMap(SearchSensitivity.init(rawValue:)) ?? .default
+        launcherShowsSuggestions = defaults.object(forKey: "launcherShowsSuggestions") as? Bool ?? true
+        fileSearchShowInLauncher = defaults.bool(forKey: "fileSearchShowInLauncher")
         fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
         // Unset seeds home; a stored empty array is a deliberately cleared list that searches nothing.
         fileSearchScopes =

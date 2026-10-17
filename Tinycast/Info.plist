@@ -32,5 +32,12 @@
 	<string>Tinycast uses Bluetooth access only when you run the Toggle Bluetooth action.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Tinycast</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Tinycast uses the camera only when you open the Camera command to preview or take a photo.</string>
+    <key>UTExportedTypeDeclarations</key>
+    <array><dict><key>UTTypeIdentifier</key><string>com.tinycast.backup</string>
+    <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+    <key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>tinycast</string></array></dict>
+    </dict></array>
 </dict>
 </plist>

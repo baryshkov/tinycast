@@ -4,6 +4,10 @@ import Foundation
 @MainActor
 @Observable
 final class HotKeyManager {
+    var onSwitchWindows: (() -> Void)?
+    var onSwitchWindowsBackwards: (() -> Void)?
+    var onSwitchRoom: (() -> Void)?
+    var onCreateRoom: (() -> Void)?
     var onTogglePalette: (() -> Void)?
     var onToggleClipboard: (() -> Void)?
     var onToggleEmoji: (() -> Void)?
@@ -14,6 +18,9 @@ final class HotKeyManager {
     var onRunCustomCommand: ((UUID) -> Void)?
     var onRunSystemAction: ((SystemAction.ID) -> Void)?
     var onRunWindowCommand: ((WindowCommand.ID) -> Void)?
+    var onCustomWindowSize: ((UUID) -> Void)?
+    var onWindowLayout: ((UUID) -> Void)?
+    var onWindowRoom: ((UUID) -> Void)?
     var onOpenQuicklink: ((UUID) -> Void)?
     var onRunExtensionCommand: ((String) -> Void)?
     /// Names what only the stores know; the fixed catalogs resolve here. Set in `AppCore.start()`.
@@ -42,6 +49,7 @@ final class HotKeyManager {
     private var doubleTaps: [DoubleTapModifier: HotKeyAction] = [:]
     /// Every binding, loaded once in `start()` and written through on change.
     private var bindings: [HotKeyAction: HotKeyBinding] = [:]
+    private(set) var revision = 0
     @ObservationIgnored private var candidateActionsCache: [HotKeyAction]?
     // Reused: the startup load decodes once per candidate action.
     private let decoder = JSONDecoder()
@@ -107,6 +115,7 @@ final class HotKeyManager {
     /// Persists or clears the binding and swaps live registration.
     func setBinding(_ binding: HotKeyBinding?, for action: HotKeyAction) {
         let previous = bindings[action]
+        if previous != binding { revision &+= 1 }
         if let binding,
             let data = try? encoder.encode(binding),
             let json = String(data: data, encoding: .utf8)
@@ -132,13 +141,19 @@ final class HotKeyManager {
             UserDefaults.standard.set(Array(set), forKey: boundPaneKey)
         case .customCommand(let id):
             index(id, bound: binding != nil, key: boundCustomCommandKey)
+        case .customWindowSize(let id):
+            index(id, bound: binding != nil, key: "boundCustomWindowSizeIDs")
+        case .windowLayout(let id):
+            index(id, bound: binding != nil, key: "boundWindowLayoutIDs")
+        case .windowRoom(let id):
+            index(id, bound: binding != nil, key: "boundWindowRoomIDs")
         case .quicklink(let id):
             index(id, bound: binding != nil, key: boundQuicklinkKey)
         case .extensionCommand(let entryID):
             var set = Set(boundExtensionCommandEntryIDs)
             if binding == nil { set.remove(entryID) } else { set.insert(entryID) }
             UserDefaults.standard.set(Array(set), forKey: boundExtensionCommandKey)
-        case .togglePalette, .toggleClipboard, .toggleEmoji, .showNotes, .createNote, .searchNotes,
+        case .switchWindows, .switchWindowsBackwards, .switchRoom, .createRoom, .togglePalette, .toggleClipboard, .toggleEmoji, .showNotes, .createNote, .searchNotes,
             .searchFiles, .systemAction, .windowCommand:
             break
         }
@@ -182,12 +197,19 @@ final class HotKeyManager {
         actions += boundExtensionCommandEntryIDs.map { .extensionCommand(entryID: $0) }
         actions += SystemAction.ID.allCases.map { .systemAction(id: $0) }
         actions += WindowCommand.ID.allCases.map { .windowCommand(id: $0) }
+        actions += (UserDefaults.standard.stringArray(forKey: "boundCustomWindowSizeIDs") ?? []).compactMap(UUID.init(uuidString:)).map { .customWindowSize(id: $0) }
+        actions += (UserDefaults.standard.stringArray(forKey: "boundWindowLayoutIDs") ?? []).compactMap(UUID.init(uuidString:)).map { .windowLayout(id: $0) }
+        actions += (UserDefaults.standard.stringArray(forKey: "boundWindowRoomIDs") ?? []).compactMap(UUID.init(uuidString:)).map { .windowRoom(id: $0) }
         candidateActionsCache = actions
         return actions
     }
 
     private func displayName(of action: HotKeyAction) -> String {
         switch action {
+        case .switchWindows: return CommandID.switchWindows.name
+        case .switchWindowsBackwards: return CommandID.switchWindowsBackwards.name
+        case .switchRoom: return CommandID.switchRoom.name
+        case .createRoom: return CommandID.createRoom.name
         case .togglePalette:
             return "App Launcher"
         case .toggleClipboard:
@@ -210,6 +232,7 @@ final class HotKeyManager {
             return SystemActionCatalog.action(id: id).name
         case .windowCommand(let id):
             return WindowCommandCatalog.command(id: id)?.name ?? "Window Command"
+        case .customWindowSize, .windowLayout, .windowRoom: return displayName?(action) ?? "Window Action"
         case .quicklink:
             return displayName?(action) ?? "Quicklink"
         case .extensionCommand:
@@ -237,6 +260,10 @@ final class HotKeyManager {
 
     private func perform(_ action: HotKeyAction) {
         switch action {
+        case .switchWindows: onSwitchWindows?()
+        case .switchWindowsBackwards: onSwitchWindowsBackwards?()
+        case .switchRoom: onSwitchRoom?()
+        case .createRoom: onCreateRoom?()
         case .togglePalette: onTogglePalette?()
         case .toggleClipboard: onToggleClipboard?()
         case .toggleEmoji: onToggleEmoji?()
@@ -249,6 +276,9 @@ final class HotKeyManager {
         case .customCommand(let id): onRunCustomCommand?(id)
         case .systemAction(let id): onRunSystemAction?(id)
         case .windowCommand(let id): onRunWindowCommand?(id)
+        case .customWindowSize(let id): onCustomWindowSize?(id)
+        case .windowLayout(let id): onWindowLayout?(id)
+        case .windowRoom(let id): onWindowRoom?(id)
         case .quicklink(let id): onOpenQuicklink?(id)
         case .extensionCommand(let entryID): onRunExtensionCommand?(entryID)
         }

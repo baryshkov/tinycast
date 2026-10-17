@@ -89,6 +89,10 @@ struct DoubleTapDetectorTests {
 
     static func commandActions() {
         let expected: [(CommandID, HotKeyAction, String)] = [
+            (.switchWindows, .switchWindows, "hotkey.switchWindows"),
+            (.switchWindowsBackwards, .switchWindowsBackwards, "hotkey.switchWindowsBackwards"),
+            (.switchRoom, .switchRoom, "hotkey.switchRoom"),
+            (.createRoom, .createRoom, "hotkey.createRoom"),
             (.clipboardHistory, .toggleClipboard, "hotkey.toggleClipboard"),
             (.searchEmoji, .toggleEmoji, "hotkey.toggleEmoji"),
             (.searchFiles, .searchFiles, "hotkey.searchFiles"),

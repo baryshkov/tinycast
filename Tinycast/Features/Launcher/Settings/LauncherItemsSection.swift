@@ -90,7 +90,7 @@ private struct LauncherItemRow: View {
 }
 
 /// Dressed like `ShortcutRecorder`; a persistent `TextField` — swapping views broke repeat focus.
-private struct AliasField: View {
+struct AliasField: View {
     let entry: AppEntry
     @Environment(AliasStore.self) private var aliases
     @State private var draft = ""

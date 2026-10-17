@@ -17,6 +17,8 @@ enum Theme {
         static let sectionHeaderBottom: CGFloat = 4
         /// Space above every header but the first, reading as the previous section's close.
         static let sectionSpacing: CGFloat = 12
+
+        static let dialogInset: CGFloat = 18
     }
 
     enum Radius {
@@ -33,9 +35,17 @@ enum Theme {
         static let keyCap: CGFloat = 6
         /// Settings shortcut-recorder keycap — smaller than the palette's `keyCap` chip.
         static let recorderKeyCap: CGFloat = 4
+
+        static let barControl: CGFloat = 8
+
+        static let glyph: CGFloat = 2
+
+        static let roomCard: CGFloat = 16
     }
 
     enum Size {
+        static let hairline: CGFloat = 1
+        static let cameraStage = CGSize(width: 560, height: 315)
         static let panelWidth: CGFloat = 750
         static let panelHeight: CGFloat = 475
         /// Opening size on a first run and the floor: below it the title bar's own parts collide.
@@ -136,9 +146,63 @@ enum Theme {
         static let volumeKnob: CGFloat = 16
         /// Fixed slot for the level readout, sized to the widest string it ever holds.
         static let volumeReadout: CGFloat = 38
+
+        static let dialogButtonHeight: CGFloat = menuButton - 2
+
+        static let layoutControlHeight: CGFloat = 28
+
+        static let layoutDisplayTab: CGFloat = 24
+
+        static let layoutEditorSheet = CGSize(width: 900, height: 660)
+
+        static let layoutEntryPopover: CGFloat = 260
+
+        static let layoutFieldUnit: CGFloat = 16
+
+        static let layoutInspectorColumn: CGFloat = 300
+
+        static let layoutPositionCell: CGFloat = 34
+
+        static let layoutPositionGlyph = CGSize(width: 26, height: 19)
+
+        static let layoutPositionStroke: CGFloat = 1.5
+
+        static let layoutPreviewIcon: CGFloat = 22
+
+        static let resultRowIcon: CGFloat = 26
+
+        static let roomCardDot: CGFloat = 8
+
+        static let roomCardIcon: CGFloat = 64
+
+        static let roomCardIconLarge: CGFloat = 96
+
+        static let roomCardIconMinHeight: CGFloat = 160
+
+        static let roomCardLargeIconMinSide: CGFloat = 320
+
+        static let roomCardShadowOffset: CGFloat = 8
+
+        static let roomCardShadowRadius: CGFloat = 24
+
+        static let roomCardStroke: CGFloat = 2
+
+        static let roomCardTitleBar: CGFloat = 40
+
+        static let previewAspectRatio: CGFloat = 16 / 9
+    }
+
+    enum DialogMotion {
+        static let offset: CGFloat = 3
+        static let initialOpacity: CGFloat = 0.08
+    }
+
+    enum RoomMotion {
+        static let glide = Animation.timingCurve(0.2, 0, 0, 1, duration: Theme.Duration.roomGlide)
     }
 
     enum Duration {
+        static let roomGlide: TimeInterval = 0.40
         /// How long each HUD stays up; a sentence needs longer than a level does.
         static let messageHUD: TimeInterval = 2.4
         static let volumeHUD: TimeInterval = 1.6
@@ -147,6 +211,22 @@ enum Theme {
         static let exit: TimeInterval = 0.12
         /// Fade-in/out for a hover `Tooltip`.
         static let tooltip: TimeInterval = 0.15
+
+        static let roomCardEnter: TimeInterval = 0.2
+
+        static let roomCardExit: TimeInterval = 0.18
+
+        static let roomSettle: TimeInterval = 0.25
+
+        static let dialogEnter: TimeInterval = 0.12
+
+        static let dialogExit: TimeInterval = 0.10
+
+        static let settingsFlash: TimeInterval = 2.0
+
+        static let settingsFlashOut: TimeInterval = 0.6
+
+        static let settingsReveal: TimeInterval = 0.28
     }
 
     /// System text styles (not hardcoded sizes) so the UI honors Dynamic Type.
@@ -174,6 +254,8 @@ enum Theme {
         static let menuShortcut = Font.callout
         static let menuIcon = Font.body
         static let noteTitle = Font.headline
+
+        static let panelTitle = Font.headline
     }
 
     enum Colors {
@@ -222,6 +304,39 @@ enum Theme {
         static let destructive = Color.red
         /// Success tint: the leading glyph of a `.success` dialog.
         static let success = Color.green
+
+        static let controlHover = ramp(dark: 0.16, light: 0.14)
+
+        static let controlPressed = ramp(dark: 0.24, light: 0.20)
+
+        static let layoutPreviewGround = adaptive(
+            dark: .srgbInk(0, alpha: 0.55), light: .srgbInk(0, alpha: 0.50))
+
+        static let layoutPreviewWindow = adaptive(
+            dark: .srgbInk(1, alpha: 0.22), light: .srgbInk(1, alpha: 0.28))
+
+        static let layoutPreviewWindowSelected = adaptive(
+            dark: .srgbInk(1, alpha: 0.38), light: .srgbInk(1, alpha: 0.44))
+
+        static let primaryAction = Color.blue
+
+        static let roomCardDot = ramp(dark: 0.25, light: 0.25)
+
+        static let roomCardFill = adaptive(
+            dark: .srgbInk(0.16, alpha: 0.94), light: .srgbInk(0.98, alpha: 0.94))
+
+        static let roomCardShadow = adaptive(
+            dark: .srgbInk(0, alpha: 0.25), light: .srgbInk(0, alpha: 0.25))
+
+        static let roomCardStroke = Color.accentColor
+
+        static let roomPreviewDim = adaptive(
+            dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18))
+
+        static let dialogDimming = adaptive(
+            dark: .srgbInk(0, alpha: 0.34), light: .srgbInk(0, alpha: 0.34))
+
+        static let searchFlash = Color.accentColor.opacity(0.35)
     }
 }
 

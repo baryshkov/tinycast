@@ -1,7 +1,26 @@
 # App launcher & fuzzy match
 
-`AppIndex.scan()` runs off-main, enumerates the user's search scopes, and dedups by bundle ID (the
-earliest scope wins).
+`AppIndex.scan()` runs off-main, enumerates the user's search scopes and retains distinct installations.
+
+## Current Sequoia backports
+
+The launcher now uses LauncherOrder, LauncherMatch, EntryNaming and ScriptRomanization from the
+upstream snapshot 06f3bc75. LauncherRankingStore stores decaying frecency and recent search terms;
+Suggestions excludes favorites, bound shortcuts and this Dev app, and can show newly installed apps.
+Search sensitivity and Suggestions can be changed in General. Root file results come from File Search.
+
+SearchScopes follows directory links with ancestor-cycle protection, discovers the app folders
+embedded in Xcode and prefers newer versions within a scope. AppIndex deduplicates physical paths,
+keeps separate installations with version/path subtitles, and chooses the first scoped installation
+for blank-query favorites. A typed search can reach the other copies. Quit and Restart target the
+selected bundle URL. Restart waits for exit and does not relaunch after a refused quit.
+
+Bundle names now use the upstream bundle-localization cache rather than Spotlight alternate-name
+lookups. The old SearchRelevance scorer remains for non-launcher features; root ranking uses the new
+precomputed SearchProfile. Window sizes, layouts and rooms share the base window-command category;
+their explicit model IDs route activation and hotkeys. File-backed application rows support drag-out.
+
+The sections below describe the original 0.9.7 implementation where not superseded above.
 
 ## Invariants
 
@@ -29,6 +48,10 @@ immediate subfolder, are indexed. That catches vendor-folder installs like
 (#256). The walk stays bounded rather than fully recursive: it never opens an `.app` bundle's own
 `Contents/` tree, because `.app` is treated as a leaf, and a subfolder nested deeper than one level
 still needs its own scope.
+
+Directory symlinks are followed within the same depth limit. Results retain their configured
+paths, so retargeting a link is reflected on the next scan. Hidden links, missing targets and
+ancestor cycles are skipped; sibling links to the same directory retain their separate paths.
 
 The defaults cover `/Applications` and `/System/Applications` plus their `Utilities` folders,
 `/System/Library/CoreServices/Applications`, the cryptex apps under
@@ -330,7 +353,9 @@ the key handler read, so the advertised chord can't drift from the behavior.
 `RunningAppsMonitor` (live from `NSWorkspace` launch/terminate notifications) drives both the row's
 running dot and the availability of the quit actions:
 
-- **Quit Application** — the last row of an app's ⌘K Actions menu, shown only while that app is
+- **Force Quit Application** — shown for running apps below Quit, also on **⌃⌥⇧Q**. It terminates
+  all instances immediately, without giving them an opportunity to save or refuse termination.
+- **Quit Application** — an app's ⌘K Actions menu row, shown only while that app is
   running, also bound to **⌃⇧Q** on the selected row. The chord guard mirrors the menu row's
   condition (an `.application` entry that `RunningAppsMonitor` reports running) so the key never
   swallows a press it won't act on, and it's skipped in the compact bar, which shows no selection.
@@ -343,8 +368,8 @@ running dot and the availability of the quit actions:
   resolves that list **once**, confirms it with an `NSAlert`, then terminates exactly what was
   confirmed. The palette hides before the alert — it is a floating panel and would sit above it.
 
-Both quits are graceful `NSRunningApplication.terminate()`, so an app with unsaved work still puts up
-its own save sheet.
+Quit Application and Quit All use `NSRunningApplication.terminate()`, so an app with unsaved work
+still puts up its own save sheet. Force Quit uses `forceTerminate()` instead.
 
 The ⌘K menu samples `isRunning` **once, when it opens** (`RootPaletteView.openActions()`), so an app
 launching or quitting elsewhere can't add or drop the Quit row while the menu is up — the same freeze

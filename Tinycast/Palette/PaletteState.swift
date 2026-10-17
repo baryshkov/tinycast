@@ -4,6 +4,8 @@ import Foundation
 @MainActor
 @Observable
 final class PaletteState {
+    private var backStack: [(mode: PaletteMode, query: String, selection: Int)] = []
+    var isVisible = false
     var mode: PaletteMode = .launcher
     var query: String = ""
     var selection: Int = 0
@@ -11,6 +13,7 @@ final class PaletteState {
     var isComposing = false
     /// The clipboard screen's type filter, reset with the rest of the screen state on each summon.
     var clipboardFilter: ClipboardFilter = .all
+    var fileSearchFilter: FileSearchFilter = .all
     /// Changes every time the palette is shown so the search field can re-focus.
     var focusToken = UUID()
     /// Bumped only by `prepare`, so lists snap to the top even when nothing else changed.
@@ -44,12 +47,32 @@ final class PaletteState {
     @ObservationIgnored var onMenuOpenChanged: ((Bool) -> Void)?
 
     func prepare(mode: PaletteMode) {
+        backStack.removeAll()
+        reset(mode: mode)
+    }
+
+    func push(mode: PaletteMode) {
+        backStack.append((self.mode, query, selection))
+        reset(mode: mode)
+    }
+
+    func pop() -> Bool {
+        guard let previous = backStack.popLast() else { return false }
+        reset(mode: previous.mode)
+        query = previous.query
+        selection = previous.selection
+        followToken = UUID()
+        return true
+    }
+
+    private func reset(mode: PaletteMode) {
         self.mode = mode
         query = ""
         selection = 0
         isComposing = false
         commandArguments = [:]
         clipboardFilter = .all
+        fileSearchFilter = .all
         forceExpanded = false
         dropHoverHighlight()
         menuOpen = false

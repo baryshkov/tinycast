@@ -14,6 +14,7 @@ enum RaycastImport {
             var trimmed = SettingsBackup()
             if options.contains(.shortcuts) { trimmed.hotkeys = backup.hotkeys }
             if options.contains(.favorites) { trimmed.favoriteApps = backup.favoriteApps }
+            if options.contains(.quicklinks) { trimmed.quicklinks = backup.quicklinks }
             if options.contains(.aliases) { trimmed.launcherAliases = backup.launcherAliases }
 
             var settings = SettingsBackup.SettingsData()
@@ -75,6 +76,7 @@ enum RaycastImport {
         let raw = try Data(contentsOf: file)
         switch try RaycastFormat.detect(raw) {
         case .v1: return try RaycastImportV1.read(raw, passphrase: passphrase)
+        case .v3: return try RaycastImportReader.read(file: file, passphrase: passphrase)
         case .v2: return try RaycastImportV2.read(raw, passphrase: passphrase)
         }
     }

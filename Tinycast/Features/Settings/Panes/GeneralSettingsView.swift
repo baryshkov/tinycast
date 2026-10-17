@@ -40,6 +40,16 @@ struct GeneralSettingsView: View {
             }
 
             Section {
+                Toggle("Show Suggestions", isOn: $settings.launcherShowsSuggestions)
+                Picker("Search Sensitivity", selection: $settings.rootSearchSensitivity) {
+                    ForEach(SearchSensitivity.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Interface size", selection: $settings.interfaceSize) {
+                    ForEach(InterfaceSize.allCases) { Text($0.title).tag($0) }
+                }
+                Toggle("Enable Window Switcher", isOn: $settings.navigationEnabled)
+                SettingsRow(title: "Switch Windows") { ShortcutRecorder(action: .switchWindows) }
+                SettingsRow(title: "Switch Windows Backwards") { ShortcutRecorder(action: .switchWindowsBackwards) }
                 LabeledContent("Learned ranking") {
                     Button("Reset…", role: .destructive) {
                         confirmingRankingReset = true
@@ -47,7 +57,7 @@ struct GeneralSettingsView: View {
                     .disabled(launcherRanking.isEmpty)
                 }
             } header: {
-                Text("Search")
+                SettingsSectionHeader(.generalSearch)
             } footer: {
                 Text(
                     "Tinycast privately learns which results you choose for each query. Reset all learned choices to restore the default order."
@@ -178,6 +188,7 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.general)
         .confirmationDialog(
             "Reset learned launcher ranking?",
             isPresented: $confirmingRankingReset,

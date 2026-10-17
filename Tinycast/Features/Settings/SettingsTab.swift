@@ -1,4 +1,4 @@
-enum SettingsTab: CaseIterable, Identifiable {
+enum SettingsTab: CaseIterable, Identifiable, Hashable, Sendable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, fileSearch,
         notes, snippets, windowManagement, clipboard, emoji, extensions, permissions, backup, about
     /// The case, never an index: a selectable `List` flattens section and row IDs together.

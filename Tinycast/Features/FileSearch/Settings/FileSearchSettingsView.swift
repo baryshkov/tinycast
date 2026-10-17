@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FileSearchSettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(AppCore.self) private var core
 
     var body: some View {
         @Bindable var settings = settings
@@ -9,10 +10,18 @@ struct FileSearchSettingsView: View {
             Section {
                 Toggle(isOn: $settings.fileSearchEnabled) {
                     Text("Enable File Search")
-                    Text("Find files and folders through the system Spotlight index, only on demand.")
+                    Text("Build a private file index on this Mac. Requires Full Disk Access.")
                 }
+                Toggle("Show Files in Launcher", isOn: $settings.fileSearchShowInLauncher)
             } header: {
-                Text("File Search")
+                SettingsSectionHeader(.fileSearchFileSearch)
+            }
+
+            Section("File Index") {
+                Text(indexStatus)
+                Button("Open Full Disk Access Settings…") { Permissions.openFullDiskAccessSettings() }
+                Button("Rebuild Index") { core.fileSearchCoordinator.rebuildIndex() }
+                    .disabled(!settings.fileSearchEnabled)
             }
 
             SearchFilesCommandSection()
@@ -23,6 +32,16 @@ struct FileSearchSettingsView: View {
                 .settingsEnabled(settings.fileSearchEnabled)
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.fileSearch)
+    }
+    private var indexStatus: String {
+        switch core.fileIndexer.status {
+        case .off: return "Not indexed"
+        case .needsAccess: return "Waiting for Full Disk Access"
+        case .building(let count): return "Indexing… \(count.formatted()) items"
+        case .ready(let count, _): return "\(count.formatted()) indexed items"
+        case .failed: return "The last index build failed"
+        }
     }
 }
 
@@ -93,7 +112,7 @@ private struct FileSearchScopesSection: View {
         } footer: {
             Text(
                 """
-                Your home folder expands to its visible folders and cloud drives, never to its Library. \
+                Only configured folders are indexed. \
                 An empty list searches nothing.
                 """
             )

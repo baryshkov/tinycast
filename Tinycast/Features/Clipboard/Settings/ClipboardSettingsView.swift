@@ -65,7 +65,7 @@ struct ClipboardSettingsView: View {
                     Button("Clear…", role: .destructive) { confirmingClear = true }
                 } label: {
                     Text("Clear history")
-                    Text("Permanently remove every saved clip and image.")
+                    Text("Remove unpinned clips and images. Pinned entries are kept.")
                 }
             }
         }
@@ -80,7 +80,7 @@ struct ClipboardSettingsView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This can't be undone.")
+            Text("Pinned entries will be kept. Deleting other entries can't be undone.")
         }
     }
 }

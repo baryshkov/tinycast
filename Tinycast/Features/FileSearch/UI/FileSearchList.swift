@@ -4,6 +4,7 @@ struct FileSearchList: View {
     let results: [FileSearchResult]
     let selectedID: FileSearchResult.ID?
     let scroll: ScrollIntent
+    let onSelect: (FileSearchResult) -> Void
     let onActivate: (FileSearchResult) -> Void
     let onActions: (FileSearchResult) -> Void
 
@@ -20,7 +21,8 @@ struct FileSearchList: View {
                         FileSearchRow(result: result, selected: result.id == selectedID)
                             .selectionFrame(result.id == selectedID)
                             .contentShape(Rectangle())
-                            .onTapGesture { onActivate(result) }
+                            .onTapGesture(count: 2) { onActivate(result) }
+                            .onTapGesture { onSelect(result) }
                             .onRightClick { onActions(result) }
                     }
                 }
@@ -39,7 +41,8 @@ struct FileSearchList: View {
     }
 }
 
-private struct FileSearchRow: View {
+struct FileSearchRow: View {
+    @Environment(AppCore.self) private var core
     let result: FileSearchResult
     let selected: Bool
     @State private var image: NSImage?
@@ -84,6 +87,11 @@ private struct FileSearchRow: View {
             RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
                 .fill(fill)
         )
+        .onDrag {
+            let item = NSItemProvider(object: result.url as NSURL)
+            core.paletteCoordinator.hidePalette(restoreFocus: false)
+            return item
+        }
         .armedHover($hovered)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(result.name)

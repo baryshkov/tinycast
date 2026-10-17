@@ -7,6 +7,9 @@ struct SettingsBackup: Codable {
     var hotkeys: HotkeyBackup?
     var customCommands: [CustomCommand]?
     var quicklinks: [Quicklink]?
+    var windowLayouts: [WindowLayout]?
+    var windowRooms: [Room]?
+    var customWindowSizes: [CustomWindowSize]?
     var favoriteApps: [String]?
     var hiddenLauncherItems: [String]?
     var hiddenLauncherKinds: [String]?
@@ -15,6 +18,14 @@ struct SettingsBackup: Codable {
     /// Enums store by raw value, so an unknown one is ignored rather than failing.
     struct SettingsData: Codable {
         // Adding a field here means adding it to SettingsBackupCoverage too, or the harness fails.
+        var fileSearchShowInLauncher: Bool?
+        var launcherShowsSuggestions: Bool?
+        var rootSearchSensitivity: String?
+        var windowLayoutsShowInLauncher: Bool?
+        var windowRoomsShowInLauncher: Bool?
+        var windowCycle: String?
+        var interfaceSize: String?
+        var navigationEnabled: Bool?
         var clipboardRetentionDays: Int?
         var clipboardDisabledApps: [String]?
         var launchAtLogin: Bool?
@@ -55,6 +66,7 @@ struct SettingsBackup: Codable {
 
     /// Combos keep the legacy shape, so older files import. docs/features/hotkeys.md#persistence
     struct HotkeyBackup: Codable {
+        var commands: [String: HotKeyBinding]?
         var togglePalette: HotKeyBinding?
         var toggleClipboard: HotKeyBinding?
         var toggleEmoji: HotKeyBinding?
@@ -67,6 +79,9 @@ struct SettingsBackup: Codable {
         var customCommands: [String: HotKeyBinding]?
         var systemActions: [String: HotKeyBinding]?
         var windowCommands: [String: HotKeyBinding]?
+        var windowLayouts: [String: HotKeyBinding]?
+        var windowRooms: [String: HotKeyBinding]?
+        var customWindowSizes: [String: HotKeyBinding]?
         var quicklinks: [String: HotKeyBinding]?
     }
 
@@ -90,6 +105,14 @@ extension SettingsBackup {
         let s = core.settings
         var backup = SettingsBackup()
         backup.settings = SettingsData(
+            fileSearchShowInLauncher: s.fileSearchShowInLauncher,
+            launcherShowsSuggestions: s.launcherShowsSuggestions,
+            rootSearchSensitivity: s.rootSearchSensitivity.rawValue,
+            windowLayoutsShowInLauncher: s.windowLayoutsShowInLauncher,
+            windowRoomsShowInLauncher: s.windowRoomsShowInLauncher,
+            windowCycle: s.windowCycle.rawValue,
+            interfaceSize: s.interfaceSize.rawValue,
+            navigationEnabled: s.navigationEnabled,
             clipboardRetentionDays: s.clipboardRetention.rawValue,
             clipboardDisabledApps: s.clipboardDisabledApps,
             launchAtLogin: s.launchAtLogin,
@@ -157,6 +180,29 @@ extension SettingsBackup {
             uniqueKeysWithValues: hk.boundQuicklinkIDs.compactMap { id in
                 hk.binding(for: .quicklink(id: id)).map { (id.uuidString.lowercased(), $0) }
             })
+        backup.windowLayouts = core.windowLayouts.layouts
+        backup.windowRooms = core.rooms.rooms
+        backup.customWindowSizes = core.customWindowSizes.sizes
+        hotkeys.windowLayouts = Dictionary(
+            uniqueKeysWithValues: core.windowLayouts.layouts.compactMap { record in
+                hk.binding(for: .windowLayout(id: record.id)).map { (record.id.uuidString.lowercased(), $0) }
+            })
+        hotkeys.windowRooms = Dictionary(
+            uniqueKeysWithValues: core.rooms.rooms.compactMap { record in
+                hk.binding(for: .windowRoom(id: record.id)).map { (record.id.uuidString.lowercased(), $0) }
+            })
+        hotkeys.customWindowSizes = Dictionary(
+            uniqueKeysWithValues: core.customWindowSizes.sizes.compactMap { record in
+                hk.binding(for: .customWindowSize(id: record.id)).map {
+                    (record.id.uuidString.lowercased(), $0)
+                }
+            })
+        hotkeys.commands = Dictionary(
+            uniqueKeysWithValues: [
+                CommandID.switchWindows, .switchWindowsBackwards, .switchRoom, .createRoom
+            ].compactMap { command in
+                command.hotKeyAction.flatMap { hk.binding(for: $0) }.map { (command.rawValue, $0) }
+            })
         backup.hotkeys = hotkeys
 
         backup.customCommands = core.customCommands.commands
@@ -178,6 +224,11 @@ extension SettingsBackup {
         // Before the hotkeys, so a restored binding has its quicklink to attach to.
         if let quicklinks {
             summary.quicklinks = core.quicklinkCoordinator.replaceQuicklinks(quicklinks)
+        }
+        if let windowLayouts { _ = core.windowLayoutCoordinator.replaceWindowLayouts(windowLayouts) }
+        if let windowRooms { _ = core.roomCoordinator.replaceRooms(windowRooms) }
+        if let customWindowSizes {
+            _ = core.customWindowSizeCoordinator.replaceCustomWindowSizes(customWindowSizes)
         }
         if let hotkeys { summary.hotkeys = applyHotkeys(hotkeys, to: core) }
         if let favoriteApps {
@@ -201,6 +252,22 @@ extension SettingsBackup {
     private func applySettings(_ s: SettingsData, to core: AppCore) -> Int {
         let settings = core.settings
         var count = 0
+        if let value = s.fileSearchShowInLauncher { settings.fileSearchShowInLauncher = value; count += 1 }
+        if let value = s.launcherShowsSuggestions { settings.launcherShowsSuggestions = value; count += 1 }
+        if let raw = s.rootSearchSensitivity, let value = SearchSensitivity(rawValue: raw) {
+            settings.rootSearchSensitivity = value; count += 1
+        }
+        if let value = s.windowLayoutsShowInLauncher {
+            settings.windowLayoutsShowInLauncher = value; count += 1
+        }
+        if let value = s.windowRoomsShowInLauncher { settings.windowRoomsShowInLauncher = value; count += 1 }
+        if let raw = s.windowCycle, let value = WindowCycle(rawValue: raw) {
+            settings.windowCycle = value; count += 1
+        }
+        if let value = s.navigationEnabled { settings.navigationEnabled = value; count += 1 }
+        if let raw = s.interfaceSize, let value = InterfaceSize(rawValue: raw) {
+            settings.interfaceSize = value; count += 1
+        }
         if let days = s.clipboardRetentionDays, let retention = ClipboardRetention(rawValue: days) {
             settings.clipboardRetention = retention
             core.clipboardCoordinator.applyRetention(retention)
@@ -345,6 +412,10 @@ extension SettingsBackup {
             hk.setBinding(binding, for: action)
             count += 1
         }
+        for (rawID, binding) in hotkeys.commands ?? [:] {
+            guard let action = CommandID(rawValue: rawID)?.hotKeyAction else { continue }
+            apply(binding, action)
+        }
         if let b = hotkeys.togglePalette { apply(b, .togglePalette) }
         if let b = hotkeys.toggleClipboard { apply(b, .toggleClipboard) }
         if let b = hotkeys.toggleEmoji { apply(b, .toggleEmoji) }
@@ -367,6 +438,20 @@ extension SettingsBackup {
         for (rawID, b) in hotkeys.windowCommands ?? [:] {
             guard let id = WindowCommand.ID(rawValue: rawID) else { continue }
             apply(b, .windowCommand(id: id))
+        }
+        for (rawID, binding) in hotkeys.windowLayouts ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.windowLayouts.layout(id: id) != nil else { continue }
+            apply(binding, .windowLayout(id: id))
+        }
+        for (rawID, binding) in hotkeys.windowRooms ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.rooms.room(id: id) != nil else { continue }
+            apply(binding, .windowRoom(id: id))
+        }
+        for (rawID, binding) in hotkeys.customWindowSizes ?? [:] {
+            guard let id = UUID(uuidString: rawID), core.customWindowSizes.size(id: id) != nil else {
+                continue
+            }
+            apply(binding, .customWindowSize(id: id))
         }
         for (rawID, b) in hotkeys.quicklinks ?? [:] {
             guard let id = UUID(uuidString: rawID), core.quicklinks.quicklink(id: id) != nil else {

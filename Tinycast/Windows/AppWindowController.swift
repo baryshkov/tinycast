@@ -9,7 +9,7 @@ final class AppWindowController: NSObject, NSWindowDelegate {
     private let isResizable: Bool
     private let autosaveName: String?
     private let activation: ActivationPolicy
-    private var window: NSWindow?
+    private(set) var window: NSWindow?
     /// Rebuilt with the window, so a chrome's state never outlives the window it decorated.
     private var chrome: WindowChrome?
 

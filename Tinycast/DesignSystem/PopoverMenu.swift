@@ -16,15 +16,17 @@ enum PopoverMenuIcon: Equatable {
 struct PopoverMenuItem {
     let title: String
     let icon: PopoverMenuIcon
+    var startsSection = false
     var shortcut: String?
     /// Destructive rows (delete) tint their icon + label red, matching the native menu convention.
     var isDestructive: Bool = false
     let action: () -> Void
 
     init(
-        title: String, icon: PopoverMenuIcon, shortcut: String? = nil, isDestructive: Bool = false,
+        title: String, icon: PopoverMenuIcon, startsSection: Bool = false, shortcut: String? = nil, isDestructive: Bool = false,
         action: @escaping () -> Void
     ) {
+        self.startsSection = startsSection
         self.title = title
         self.icon = icon
         self.shortcut = shortcut
@@ -33,11 +35,11 @@ struct PopoverMenuItem {
     }
 
     init(
-        title: String, systemImage: String, shortcut: String? = nil, isDestructive: Bool = false,
+        title: String, systemImage: String, startsSection: Bool = false, shortcut: String? = nil, isDestructive: Bool = false,
         action: @escaping () -> Void
     ) {
         self.init(
-            title: title, icon: .symbol(systemImage), shortcut: shortcut,
+            title: title, icon: .symbol(systemImage), startsSection: startsSection, shortcut: shortcut,
             isDestructive: isDestructive, action: action)
     }
 }
@@ -71,6 +73,10 @@ struct PopoverMenu: View {
             }
             // Index-as-id is stable: a menu's rows never reorder while it is open.
             ForEach(items.indices, id: \.self) { index in
+                if items[index].startsSection, index > 0 {
+                    Rectangle().fill(Theme.Colors.separator).frame(height: Theme.Size.hairline)
+                        .padding(.horizontal, Theme.Spacing.md)
+                }
                 PopoverMenuRow(
                     item: items[index],
                     selected: index == selection,

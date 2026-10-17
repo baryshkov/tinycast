@@ -90,3 +90,16 @@ private final class TextTailDragView: DragView {
         return local.x > textWidth + Self.edgeSlack ? super.hitTest(point) : nil
     }
 }
+
+/// A background, so only empty space drags; `performDrag(with:)` lets the window pick what moves.
+struct WindowDragBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { BackgroundDragView() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private final class BackgroundDragView: NSView {
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
+    }
+}

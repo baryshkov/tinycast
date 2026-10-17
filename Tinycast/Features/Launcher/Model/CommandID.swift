@@ -2,6 +2,13 @@ import Foundation
 
 /// Built-in launcher actions, surfaced alongside the user-authored ones.
 enum CommandID: String, CaseIterable, Sendable {
+    case switchWindowsBackwards = "command:switch-windows-backwards"
+    case switchWindows = "command:switch-windows"
+    case switchRoom = "command:switch-room"
+    case createRoom = "command:create-room"
+    case createWindowLayout = "command:create-window-layout"
+    case captureWindowLayout = "command:capture-window-layout"
+    case openCamera = "command:open-camera"
     case calculatorHistory = "command:calculator-history"
     case clipboardHistory = "command:clipboard-history"
     case searchEmoji = "command:search-emoji"
@@ -22,6 +29,13 @@ enum CommandID: String, CaseIterable, Sendable {
 
     var name: String {
         switch self {
+        case .switchWindowsBackwards: return "Switch Windows Backwards"
+        case .switchWindows: return "Switch Windows"
+        case .switchRoom: return "Switch Room"
+        case .createRoom: return "Create Room"
+        case .createWindowLayout: return "Create Window Layout"
+        case .captureWindowLayout: return "Capture Window Layout"
+        case .openCamera: return "Open Camera"
         case .calculatorHistory: return "Calculator History"
         case .clipboardHistory: return "Clipboard History"
         case .searchEmoji: return "Search Emoji & Symbols"
@@ -33,8 +47,8 @@ enum CommandID: String, CaseIterable, Sendable {
         case .searchQuicklinks: return "Search Quicklinks"
         case .importQuicklinks: return "Import Quicklinks"
         case .exportQuicklinks: return "Export Quicklinks"
-        case .exportSettings: return "Export Settings"
-        case .importSettings: return "Import Settings"
+        case .exportSettings: return "Export Tinycast Backup"
+        case .importSettings: return "Import Tinycast Backup"
         case .importFromRaycast: return "Import from Raycast"
         case .settings: return "Settings"
         case .about: return "About Tinycast"
@@ -44,6 +58,13 @@ enum CommandID: String, CaseIterable, Sendable {
 
     var sfSymbol: String {
         switch self {
+        case .switchWindowsBackwards: return "macwindow.on.rectangle"
+        case .switchWindows: return "macwindow.on.rectangle"
+        case .switchRoom: return "rectangle.3.group"
+        case .createRoom: return "plus.rectangle.on.rectangle"
+        case .createWindowLayout: return "rectangle.3.group"
+        case .captureWindowLayout: return "rectangle.dashed.badge.record"
+        case .openCamera: return "camera"
         case .calculatorHistory: return "plus.forwardslash.minus"
         case .clipboardHistory: return "doc.on.clipboard"
         case .searchEmoji: return "face.smiling"
@@ -67,6 +88,10 @@ enum CommandID: String, CaseIterable, Sendable {
     /// The built-ins with a global shortcut of their own; the rest open from the launcher.
     var hotKeyAction: HotKeyAction? {
         switch self {
+        case .switchWindows: return .switchWindows
+        case .switchWindowsBackwards: return .switchWindowsBackwards
+        case .switchRoom: return .switchRoom
+        case .createRoom: return .createRoom
         case .searchFiles: return .searchFiles
         case .clipboardHistory: return .toggleClipboard
         case .searchEmoji: return .toggleEmoji

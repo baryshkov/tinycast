@@ -1,5 +1,9 @@
 # Clipboard history
 
+An image copied or pasted from history includes both PNG data and the stored PNG's file URL.
+Image-aware apps keep the image, while a terminal can paste its file path. No plain-text payload
+is added, so rich-text receivers do not replace the image with a path string.
+
 ## Invariants
 
 - **Clipboard writes stamp a private `internalType` marker** so the poller skips Tinycast's own writes.
@@ -100,7 +104,8 @@ Pins change four things:
   the same) rather than dropping back into the date bucket it came from, which would scroll the list
   out from under the selection. It's the same delete + re-insert `promote` uses.
 - **Retention.** Pruning skips pinned rows (`AND pinned_at IS NULL`), so a pin outlives the retention
-  window. "Clear History" still deletes everything.
+  window. "Clear History" also keeps pinned rows and their image files; delete a pin individually
+  to remove it. Clearing removes only owned image files belonging to the deleted, unpinned rows.
 - **Selection.** Pinning lifts a row out of its date bucket, so `ClipboardCoordinator.togglePinnedClip` moves the
   palette selection to the row's new index in the _current_ results and bumps `palette.followToken`,
   which is what makes the list scroll the highlight back into view.

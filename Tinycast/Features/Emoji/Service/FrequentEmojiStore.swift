@@ -59,6 +59,22 @@ final class FrequentEmojiStore {
         return Array(sorted.prefix(n))
     }
 
+    func replace(_ imported: [FrequentEmoji]) {
+        revision &+= 1
+        records = Self.history(imported)
+        persist()
+    }
+
+    private static func history(_ tallies: [FrequentEmoji]) -> [FrequentEmoji] {
+        var seen = Set<String>()
+        return Array(
+            tallies
+                .filter { !$0.glyph.isEmpty && $0.count > 0 }
+                .sorted { $0.lastUsed > $1.lastUsed }
+                .filter { seen.insert($0.glyph).inserted }
+                .prefix(cap))
+    }
+
     private func persist() {
         if let data = try? JSONEncoder().encode(records) {
             try? data.write(to: fileURL, options: .atomic)

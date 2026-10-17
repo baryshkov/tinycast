@@ -2,7 +2,12 @@ import SwiftUI
 
 struct LauncherList: View {
     let results: [AppEntry]
+    var files: [FileSearchResult] = []
+    var selectedFileID: String?
+    var onActivateFile: (FileSearchResult) -> Void = { _ in }
+    var onFileActions: (FileSearchResult) -> Void = { _ in }
     let selectedID: AppEntry.ID?
+    var suggestionCount: Int = 0
     let favoriteCount: Int
     let showSections: Bool
     /// Changes only when the list should scroll, so mouse selection never yanks it.
@@ -21,19 +26,21 @@ struct LauncherList: View {
     private enum Row: Identifiable {
         case header(String)
         case calc(CalcResult)
+        case file(FileSearchResult)
         /// `slot` is the row's ⌘-digit, carried from the section build so no row has to search for it.
         case app(AppEntry, slot: Character?)
         var id: String {
             switch self {
             case .header(let title): return "header-" + title
             case .calc: return LauncherList.calcRowID
+            case .file(let file): return "file:" + file.id
             case .app(let app, _): return app.id
             }
         }
     }
 
     /// Scroll target for the current selection.
-    private var selectedRowID: String? { calcSelected ? Self.calcRowID : selectedID }
+    private var selectedRowID: String? { calcSelected ? Self.calcRowID : selectedFileID.map { "file:" + $0 } ?? selectedID }
 
     /// Whether the selection sits on flat index 0: the calc card, else the first result.
     private var firstRowSelected: Bool {
@@ -44,12 +51,14 @@ struct LauncherList: View {
         var calcRows: [Row] = []
         if let calc { calcRows = [.header("Calculator"), .calc(calc)] }
         guard showSections else {
-            guard !results.isEmpty else { return calcRows }
-            return calcRows + [.header("Results")] + results.map { .app($0, slot: nil) }
+            guard !results.isEmpty || !files.isEmpty else { return calcRows }
+            return calcRows + (results.isEmpty ? [] : [.header("Results")] + results.map { .app($0, slot: nil) })
+                + (files.isEmpty ? [] : [.header("Files")] + files.map(Row.file))
         }
         var rows: [Row] = calcRows
         let favorites = results.prefix(favoriteCount)
-        let rest = results.dropFirst(favoriteCount)
+        let suggestions = results.dropFirst(favoriteCount).prefix(suggestionCount)
+        let rest = results.dropFirst(favoriteCount + suggestionCount)
         var grouped: [AppEntry.Kind: [AppEntry]] = [:]
         for app in rest { grouped[app.kind, default: []].append(app) }
         if !favorites.isEmpty {
@@ -58,6 +67,10 @@ struct LauncherList: View {
                 contentsOf: favorites.enumerated().map {
                     .app($1, slot: FavoriteSlots.digit(at: $0))
                 })
+        }
+        if !suggestions.isEmpty {
+            rows.append(.header("Suggestions"))
+            rows.append(contentsOf: suggestions.map { .app($0, slot: nil) })
         }
         // Publication order, so rows match the flat index.
         let kinds: [AppEntry.Kind] = [
@@ -81,7 +94,7 @@ struct LauncherList: View {
     var body: some View {
         let rows = rows
         return Group {
-            if results.isEmpty && calc == nil {
+            if results.isEmpty && calc == nil && files.isEmpty {
                 EmptyResults(text: "No apps found")
             } else {
                 ScrollViewReader { proxy in
@@ -98,6 +111,12 @@ struct LauncherList: View {
                                         .onRightClick(perform: onCalcActions)
                                         .padding(.bottom, Theme.Spacing.xs)
                                         .selectionFrame(calcSelected)
+                                case .file(let file):
+                                    FileSearchRow(result: file, selected: file.id == selectedFileID)
+                                        .id("file:" + file.id)
+                                        .selectionFrame(file.id == selectedFileID)
+                                        .onTapGesture { onActivateFile(file) }
+                                        .onRightClick { onFileActions(file) }
                                 case .app(let app, let slot):
                                     AppRow(
                                         app: app,
@@ -136,6 +155,7 @@ private struct AppRow: View {
     /// This row's ⌘-digit, or nil for a row no chord launches.
     let slot: Character?
     /// Observed so a hotkey set/cleared in Settings re-renders the row's keycaps immediately.
+    @Environment(AppCore.self) private var core
     @Environment(HotKeyManager.self) private var hotKeys
     /// Observed for the same reason: an alias edit re-renders the row's badge at once.
     @Environment(AliasStore.self) private var aliases
@@ -197,7 +217,7 @@ private struct AppRow: View {
                     KeyCapChip(text: String(slot), style: .outline)
                 }
             } else {
-                Text(app.kindLabel)
+                Text(app.subtitle ?? app.kindLabel)
                     .font(Theme.Typography.rowTrailing)
                     .foregroundStyle(.secondary)
             }
@@ -208,6 +228,21 @@ private struct AppRow: View {
             RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
                 .fill(fill)
         )
+        .modifier(LauncherFileDrag(entry: app, core: core))
         .armedHover($hovered)
+    }
+}
+
+private struct LauncherFileDrag: ViewModifier {
+    let entry: AppEntry
+    let core: AppCore
+    @ViewBuilder func body(content: Content) -> some View {
+        if entry.canRevealInFinder {
+            content.onDrag {
+                let provider = NSItemProvider(object: entry.url as NSURL)
+                core.paletteCoordinator.hidePalette(restoreFocus: false)
+                return provider
+            }
+        } else { content }
     }
 }

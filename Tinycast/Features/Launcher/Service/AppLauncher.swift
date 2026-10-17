@@ -3,13 +3,36 @@ import AppKit
 enum AppLauncher {
 
     @MainActor
-    static func launch(_ url: URL) {
-        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+    static func launch(_ url: URL, allowsRunningApplicationSubstitution: Bool = true) {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.allowsRunningApplicationSubstitution = allowsRunningApplicationSubstitution
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+    }
+
+    @MainActor
+    static func open(_ url: URL) {
+        NSWorkspace.shared.open(url)
     }
 
     @MainActor
     static func showInFinder(_ url: URL) {
         NSWorkspace.shared.activateFileViewerSelecting([url])
+        bringFileViewerForwardIfRefused()
+    }
+
+    /// While `.regular` and inactive, cooperative activation refuses the viewer's own activation.
+    @MainActor
+    private static func bringFileViewerForwardIfRefused() {
+        guard NSApp.activationPolicy() == .regular, !NSApp.isActive,
+            let viewer = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: fileViewerBundleID)
+        else { return }
+        NSWorkspace.shared.openApplication(at: viewer, configuration: NSWorkspace.OpenConfiguration())
+    }
+
+    /// The global `NSFileViewer` default is how a replacement file viewer takes over reveals.
+    private static var fileViewerBundleID: String {
+        UserDefaults.standard.string(forKey: "NSFileViewer") ?? "com.apple.finder"
     }
 
     /// No AppKit route for Get Info, so this drives Finder over Apple events — seconds when cold.
@@ -28,7 +51,6 @@ enum AppLauncher {
         }.value
     }
 
-    /// Opens System Settings at the pane backed by the given extension bundle ID.
     @MainActor
     static func openSettingsPane(bundleID: String) {
         guard let url = URL(string: "x-apple.systempreferences:" + bundleID) else { return }
@@ -57,13 +79,63 @@ enum AppLauncher {
         }
     }
 
-    /// Asks every instance to quit, gracefully, so unsaved work still gets its sheet.
     @MainActor
     @discardableResult
-    static func quit(bundleID: String) -> Bool {
-        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-        for app in running { app.terminate() }
+    static func quit(bundleID: String, url: URL? = nil, force: Bool = false) -> Bool {
+        let running = runningApplications(bundleID: bundleID, at: url)
+        for app in running {
+            if force { app.forceTerminate() } else { app.terminate() }
+        }
         return !running.isEmpty
+    }
+
+    /// Long enough for any app to exit, short enough not to relaunch under the user.
+    private static let exitGrace = Duration.seconds(5)
+
+    /// A refused quit — a save sheet left standing — relaunches nothing.
+    @MainActor
+    static func restart(bundleID: String, url: URL) async {
+        let target = url.resolvingSymlinksInPath().standardizedFileURL
+        let running = runningApplications(bundleID: bundleID, at: target)
+        guard !running.isEmpty, !Task.isCancelled, await quitAwaitingExit(running), !Task.isCancelled
+        else { return }
+        launch(target, allowsRunningApplicationSubstitution: false)
+    }
+
+    @MainActor
+    private static func runningApplications(bundleID: String, at url: URL?) -> [NSRunningApplication] {
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        guard let target = url?.resolvingSymlinksInPath().standardizedFileURL else { return running }
+        return running.filter { $0.bundleURL?.resolvingSymlinksInPath().standardizedFileURL == target }
+    }
+
+    /// Observes before it terminates, so an instance that exits at once can't outrun the wait.
+    @MainActor
+    private static func quitAwaitingExit(_ apps: [NSRunningApplication]) async -> Bool {
+        let center = NSWorkspace.shared.notificationCenter
+        let (exits, continuation) = AsyncStream.makeStream(of: pid_t.self)
+        let observer = center.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main
+        ) { note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+                return
+            }
+            continuation.yield(app.processIdentifier)
+        }
+        defer { center.removeObserver(observer) }
+
+        var pending = Set(apps.map(\.processIdentifier))
+        for app in apps { app.terminate() }
+
+        let grace = Task {
+            try? await Task.sleep(for: exitGrace); continuation.finish()
+        }
+        defer { grace.cancel() }
+        for await pid in exits {
+            pending.remove(pid)
+            if pending.isEmpty { return true }
+        }
+        return false
     }
 
     /// Finder is never a Quit All target: `terminate()` only makes it relaunch.

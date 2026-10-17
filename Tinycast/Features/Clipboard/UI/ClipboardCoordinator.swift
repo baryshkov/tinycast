@@ -50,7 +50,7 @@ final class ClipboardCoordinator {
         guard
             await core.confirm(
                 title: "Clear clipboard history?",
-                message: "Every entry goes, pinned ones included. This can't be undone.",
+                message: "Unpinned entries will be deleted. Pinned entries will be kept. This can't be undone.",
                 symbol: PaletteMode.clipboard.systemImage, confirmTitle: "Clear History")
         else { return }
         clipboardStore.clearAll()

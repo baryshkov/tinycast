@@ -45,6 +45,7 @@ enum LegacyHotKeyRecords {
     /// Nil for an action that postdates the old scheme: it has no record to adopt, only a new key.
     private static func legacyKey(for action: HotKeyAction) -> String? {
         switch action {
+        case .switchWindows, .switchWindowsBackwards, .switchRoom, .createRoom: nil
         case .togglePalette: "KeyboardShortcuts_togglePalette"
         case .toggleClipboard: "KeyboardShortcuts_toggleClipboard"
         case .toggleEmoji: "KeyboardShortcuts_toggleEmoji"
@@ -59,7 +60,7 @@ enum LegacyHotKeyRecords {
         case .quicklink(let id):
             "KeyboardShortcuts_quicklinkHotkey." + id.uuidString.lowercased()
         // Newer than the package it adopts records from, so there is nothing to adopt.
-        case .extensionCommand: nil
+        case .extensionCommand, .windowLayout, .windowRoom, .customWindowSize: nil
         }
     }
 }

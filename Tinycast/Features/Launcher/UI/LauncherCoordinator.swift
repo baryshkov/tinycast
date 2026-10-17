@@ -55,7 +55,7 @@ final class LauncherCoordinator {
     ) {
         // A category listing is not a search for the row that ran; learning it would rank it under "s".
         if let searchQuery, AppEntry.Kind.named(by: searchQuery) == nil {
-            ranking.record(itemKey: app.preferenceKey, query: searchQuery)
+            ranking.visit(itemKey: app.preferenceKey, query: searchQuery)
         }
         // Commands dispatch before the palette hides: mode-switching commands keep it open.
         if app.kind == .command {
@@ -72,6 +72,9 @@ final class LauncherCoordinator {
             systemActionCoordinator.runSystemAction(id: action.id)
             return
         }
+        if let id = CustomWindowSize.id(fromEntryID: app.id) { windowCommandCoordinator.runCustomWindowSize(id: id); return }
+        if let id = WindowLayout.id(fromEntryID: app.id) { core.windowLayoutCoordinator.runWindowLayout(id: id); return }
+        if let id = Room.id(fromEntryID: app.id) { core.roomCoordinator.enterRoom(id: id); return }
         if app.kind == .windowCommand {
             guard let command = WindowCommandCatalog.command(forEntryID: app.id) else { return }
             windowCommandCoordinator.runWindowCommand(id: command.id)
@@ -92,7 +95,7 @@ final class LauncherCoordinator {
         paletteCoordinator.hidePalette(restoreFocus: false)
         switch app.kind {
         case .application:
-            AppLauncher.launch(app.url)
+            AppLauncher.launch(app.url, allowsRunningApplicationSubstitution: app.isPrimaryInstallation)
         case .systemSettings:
             guard let bundleID = app.bundleID else { return }
             AppLauncher.openSettingsPane(bundleID: bundleID)
@@ -107,6 +110,15 @@ final class LauncherCoordinator {
 
     private func runCommand(_ entry: AppEntry) {
         switch CommandCatalog.command(for: entry) {
+        case .switchWindowsBackwards: core.windowSwitchCoordinator.show(backwards: true)
+        case .switchWindows: core.windowSwitchCoordinator.show()
+        case .switchRoom: core.roomCoordinator.showRooms()
+        case .createRoom: core.roomCoordinator.createRoom()
+        case .createWindowLayout: core.windowLayoutCoordinator.editWindowLayout(nil)
+        case .captureWindowLayout: core.windowLayoutCoordinator.captureWindowLayout()
+        case .openCamera:
+            paletteCoordinator.hidePalette(restoreFocus: false)
+            Task { await core.cameraCoordinator.show() }
         case .calculatorHistory:
             paletteCoordinator.showPalette(mode: .calculatorHistory)
         case .clipboardHistory:
@@ -137,10 +149,10 @@ final class LauncherCoordinator {
             Task { await quicklinkCoordinator.exportQuicklinks() }
         case .exportSettings:
             paletteCoordinator.hidePalette(restoreFocus: false)
-            Task { await BackupActions.exportSettings(core: core) }
+            Task { await BackupActions.runExportCommand(core: core) }
         case .importSettings:
             paletteCoordinator.hidePalette(restoreFocus: false)
-            Task { await BackupActions.importSettings(core: core) }
+            Task { await BackupActions.runImportCommand(core: core) }
         case .importFromRaycast:
             paletteCoordinator.hidePalette(restoreFocus: false)
             settingsCoordinator.showBackupSettings()
@@ -169,11 +181,17 @@ final class LauncherCoordinator {
     }
 
     /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
-    func quit(_ app: AppEntry) {
+    func restart(_ app: AppEntry) {
+        guard app.kind == .application, let bundleID = app.bundleID else { return }
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        Task { await AppLauncher.restart(bundleID: bundleID, url: app.url) }
+    }
+
+    func quit(_ app: AppEntry, force: Bool = false) {
         guard app.kind == .application, let bundleID = app.bundleID else { return }
         // Nothing here takes focus, so hand it back unless that app is on its way out.
         let quittingPreviousApp = windowController.previousApp?.bundleIdentifier == bundleID
-        guard AppLauncher.quit(bundleID: bundleID) else { return }
+        guard AppLauncher.quit(bundleID: bundleID, url: app.url, force: force) else { return }
         paletteCoordinator.hidePalette(restoreFocus: !quittingPreviousApp)
     }
 }

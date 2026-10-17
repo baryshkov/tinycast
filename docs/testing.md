@@ -58,8 +58,10 @@ If a change touches anything in the right column, the harness on the left is man
 | `file-search-session-test` | serialized query execution, debounce coalescing and cancellation |
 | `ranking-test` | `Launcher/Model/LauncherRankingStore.swift` |
 | `scopes-test` | `Launcher/Model/SearchScopes.swift` |
+| `app-quit-test` | `AppLauncher` normal versus forced termination, using an isolated temporary app that refuses a normal quit |
 | `calc-test` | all of `Calculator/Model/` |
 | `clipboard-test` | `Clipboard/Model/ClipboardStore.swift` |
+| `clipboard-pasteboard-test` | Real `Paster` and `ClipboardStore` with a private pasteboard: PNG plus file URL, vanished files, text and own-write markers |
 | `emoji-test` | `Emoji/Model/EmojiCatalog.swift`, `EmojiGridGeometry.swift`, the generated data |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `palette-placement-test` | `DesignSystem/Theme.swift`, `Palette/PalettePlacement.swift` |
@@ -371,3 +373,12 @@ tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
 - Quit and relaunch: everything created above persisted
 - Nothing was written outside `com.tinycast.app.dev/`. Channel isolation is not negotiable — a Dev build
   writing into the stable app's directory is a defect even though the data is disposable
+
+## Sequoia module ports
+
+Run `bash compat/build-dev.sh --test`: compiling Theme directly without the compatibility patch
+requires macOS 26. New geometry/archive/query harnesses are listed in `Scripts/run-tests.sh`.
+`settings-file-port-test` tests real Observation and file monitoring in a temporary folder;
+`backup-clipboard-port-test` verifies image ownership after staging is removed and repeat-import dedup.
+`raycast3-test` uses generated encrypted fixtures; `microphone-mute-test` injects CoreAudio calls.
+See [compat/PORTS.md](../compat/PORTS.md) for scope and remaining runtime permission checks.

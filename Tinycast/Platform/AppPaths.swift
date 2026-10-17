@@ -14,6 +14,11 @@ enum AppPaths {
         root(.applicationSupportDirectory, bundleID: bundleID)
     }
 
+    static func settingsFile(bundleID: String = Bundle.main.bundleIdentifier ?? "com.tinycast.app") -> URL {
+        let channel = bundleID == "com.tinycast.app" ? "tinycast" : "tinycast-dev"
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/" + channel + "/settings.json")
+    }
+
     private static func root(
         _ directory: FileManager.SearchPathDirectory, bundleID: String
     ) -> URL {

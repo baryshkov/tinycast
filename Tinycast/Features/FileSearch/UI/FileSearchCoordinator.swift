@@ -5,17 +5,21 @@ final class FileSearchCoordinator {
     private let settings: AppSettings
     private let appIndex: AppIndex
     private let session: FileSearchSession
+    private let indexer: FileIndexer
     private let palette: PaletteState
     private let paletteCoordinator: PaletteCoordinator
     private unowned let core: AppCore
 
     init(
-        settings: AppSettings, appIndex: AppIndex, session: FileSearchSession,
+        settings: AppSettings, appIndex: AppIndex, session: FileSearchSession, indexer: FileIndexer,
         palette: PaletteState, paletteCoordinator: PaletteCoordinator, core: AppCore
     ) {
         self.settings = settings
         self.appIndex = appIndex
         self.session = session
+        self.indexer = indexer
+        indexer.onIndexChanged = { [weak session] in session?.refresh() }
+        indexer.onRecentChanged = { [weak session] in session?.refreshRecent() }
         self.palette = palette
         self.paletteCoordinator = paletteCoordinator
         self.core = core
@@ -23,18 +27,35 @@ final class FileSearchCoordinator {
 
     func applyEnabled() {
         appIndex.setCommandsVisible([.searchFiles], settings.fileSearchEnabled)
+        indexer.setEnabled(settings.fileSearchEnabled)
         guard !settings.fileSearchEnabled else { return }
         session.cancel()
         if palette.mode == .fileSearch { palette.prepare(mode: .launcher) }
     }
 
     func applyPolicy() {
-        session.apply(
-            scopes: settings.fileSearchScopes, ignorePatterns: settings.fileSearchIgnorePatterns)
+        indexer.apply(FileSearchPolicy(
+            scopes: settings.fileSearchScopes, ignorePatterns: settings.fileSearchIgnorePatterns,
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser))
     }
+
+    func searchFromLauncher(_ query: String) {
+        guard settings.fileSearchEnabled, settings.fileSearchShowInLauncher,
+            FileSearchQuery.answersLauncher(query) else { session.cancel(); return }
+        session.search(query)
+    }
+
+    func launcherFiles(for query: String) -> [FileSearchResult] {
+        guard settings.fileSearchEnabled, settings.fileSearchShowInLauncher,
+            FileSearchQuery.answersLauncher(query) else { return [] }
+        return Array(session.results.prefix(FileSearchQuery.launcherLimit))
+    }
+
+    func rebuildIndex() { indexer.rebuild() }
 
     func show() {
         guard settings.fileSearchEnabled else { return }
+        indexer.refreshAccess()
         paletteCoordinator.showPalette(mode: .fileSearch)
     }
 

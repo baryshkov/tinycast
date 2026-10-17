@@ -106,3 +106,104 @@ struct SettingsFilterField: View {
         .onTapGesture { focused = true }
     }
 }
+
+struct SettingsEditorHeader: View {
+    let title: String
+    var subtitle: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Text(title)
+                .font(Theme.Typography.panelTitle)
+            if let subtitle {
+                Text(subtitle)
+                    .font(Theme.Typography.rowTitle)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+struct SettingsEditorField<Content: View>: View {
+    let title: String
+    var labelFont: Font?
+    @ViewBuilder var content: Content
+
+    init(
+        _ title: String, labelFont: Font? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.labelFont = labelFont
+        self.content = content()
+    }
+
+    var body: some View {
+        LabeledContent {
+            content
+                .labelsHidden()
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        } label: {
+            Text(title).font(labelFont)
+        }
+    }
+}
+
+private struct SettingsEditorTextField: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .textFieldStyle(.plain)
+            .padding(.horizontal, Theme.Spacing.lg)
+            .frame(height: Theme.Size.dialogButtonHeight)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                    .fill(Theme.Colors.controlSurface))
+    }
+}
+
+private struct SettingsEditorTextArea: ViewModifier {
+    let height: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .padding(Theme.Spacing.sm)
+            .frame(height: height)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                    .fill(Theme.Colors.controlSurface))
+    }
+}
+
+private struct SettingsEditorPanelSurface: ViewModifier {
+    let controlsOnGlass: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+        // In front of the glass: a glass fill is hit-testable and would hide a handle behind it.
+        let draggable = content.background(WindowDragBackground())
+        if controlsOnGlass {
+            draggable
+                .background(Theme.Colors.panelScrim, in: shape)
+                .background(.ultraThinMaterial, in: shape)
+        } else {
+            draggable.background {
+                shape.fill(Theme.Colors.panelScrim).background(.ultraThinMaterial, in: shape)
+            }
+        }
+    }
+}
+
+extension View {
+    func launcherVisibilityHelp() -> some View { help("Show in launcher. Its shortcut works either way.") }
+    func settingsEditorTextField() -> some View { modifier(SettingsEditorTextField()) }
+    func settingsEditorTextArea(height: CGFloat) -> some View {
+        modifier(SettingsEditorTextArea(height: height))
+    }
+    func settingsEditorPanelSurface(controlsOnGlass: Bool = true) -> some View {
+        modifier(SettingsEditorPanelSurface(controlsOnGlass: controlsOnGlass))
+    }
+}

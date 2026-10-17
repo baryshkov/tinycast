@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 // `@preconcurrency` downgrades AX diagnostics: the option key is a constant C global.
 @preconcurrency import ApplicationServices
 
@@ -23,4 +24,41 @@ enum Permissions {
         else { return }
         NSWorkspace.shared.open(url)
     }
+    /// Full Disk Access has no prompt and no API; opening a file it guards is the only probe.
+    static func hasFullDiskAccess() -> Bool {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let guarded = [
+            home + "/Library/Application Support/com.apple.TCC/TCC.db",
+            "/Library/Application Support/com.apple.TCC/TCC.db"
+        ]
+        return guarded.contains { path in
+            let descriptor = open(path, O_RDONLY | O_CLOEXEC)
+            guard descriptor >= 0 else { return false }
+            close(descriptor)
+            return true
+        }
+    }
+
+    @MainActor
+    static func openFullDiskAccessSettings() {
+        guard
+            let url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+        else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    static func cameraAccess() -> CameraAccess {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: return .granted
+        case .notDetermined: return .notDetermined
+        default: return .denied
+        }
+    }
+
+    /// The one camera prompt, raised from the gesture that asked for it.
+    nonisolated static func requestCameraAccess() async -> Bool {
+        await AVCaptureDevice.requestAccess(for: .video)
+    }
+
 }

@@ -3,7 +3,9 @@ import SwiftUI
 
 struct BackupSettingsView: View {
     @Environment(AppCore.self) private var core
+    @Environment(AppSettings.self) private var settings
     private var runningApps: RunningAppsMonitor { core.runningApps }
+    @State private var backupSelection = BackupCategory.all
     @State private var raycastFile: URL?
     @State private var passphrase = ""
     @State private var importing = false
@@ -28,7 +30,25 @@ struct BackupSettingsView: View {
     }
 
     var body: some View {
-        Form {
+        @Bindable var settings = settings
+        return Form {
+            Section {
+                Toggle("Sync settings file", isOn: $settings.settingsFileEnabled)
+                Button("Open settings.json") { NSWorkspace.shared.open(AppPaths.settingsFile()) }
+                    .disabled(!settings.settingsFileEnabled)
+            } header: { SettingsSectionHeader(.backupSettingsFile) }
+            Section("Full Tinycast Backup") {
+                BackupCategorySelection(selection: $backupSelection)
+                Button("Export .tinycast…") {
+                    Task {
+                        do {
+                            _ = try await BackupActions.exportBackup(core: core, categories: backupSelection)
+                            status = .success("Backup exported")
+                        } catch is CancellationError {} catch { status = .failure(error.localizedDescription) }
+                    }
+                }.disabled(backupSelection.isEmpty)
+                Button("Import .tinycast…") { Task { await BackupActions.runImportCommand(core: core, categories: backupSelection) } }
+            }
             Section {
                 LabeledContent {
                     Button("Export…") { Task { await BackupActions.exportSettings(core: core) } }
@@ -80,6 +100,7 @@ struct BackupSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .settingsScrollTarget(.backup)
     }
 
     @ViewBuilder
@@ -128,7 +149,7 @@ struct BackupSettingsView: View {
         else { return }
         importing = true
         status = nil
-        Task {
+        Task<Void, Never> {
             defer { importing = false }
             do {
                 let outcome = try await BackupActions.importRaycast(

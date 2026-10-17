@@ -60,12 +60,20 @@ enum AppActionsMenu {
                 })
         }
         if running, app.kind == .application {
+            items.append(PopoverMenuItem(title: "Restart Application", systemImage: "arrow.clockwise") {
+                core.launcherCoordinator.restart(app)
+            })
             items.append(
                 PopoverMenuItem(
-                    title: "Quit Application", systemImage: "power", shortcut: "⌃⇧Q",
-                    isDestructive: true
+                    title: "Quit Application", systemImage: "power", shortcut: "⌃⇧Q"
                 ) {
                     core.launcherCoordinator.quit(app)
+                })
+            items.append(
+                PopoverMenuItem(
+                    title: "Force Quit Application", systemImage: "xmark.circle", shortcut: "⌃⌥⇧Q"
+                ) {
+                    core.launcherCoordinator.quit(app, force: true)
                 })
         }
         if app.kind == .application {

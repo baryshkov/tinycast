@@ -45,6 +45,7 @@ enum RaycastImportV2 {
             throw RaycastImportError.corrupt
         }
         var backup = SettingsBackup()
+        backup.quicklinks = RaycastQuicklinkImport.parse(json["quicklinks"])
         backup.settings = mapSettings(json)
         backup.hotkeys = mapHotkeys(json)
         backup.favoriteApps = mapFavorites(json)
@@ -289,30 +290,5 @@ enum RaycastImportV2 {
             }
         }
         return nil
-    }
-}
-
-extension Data {
-    /// Parses an even-length hex string; returns nil on any non-hex character.
-    init?(hex: String) {
-        let chars = Array(hex.utf8)
-        guard chars.count % 2 == 0 else { return nil }
-        var bytes = [UInt8]()
-        bytes.reserveCapacity(chars.count / 2)
-        func nibble(_ c: UInt8) -> UInt8? {
-            switch c {
-            case 0x30...0x39: return c - 0x30
-            case 0x61...0x66: return c - 0x61 + 10
-            case 0x41...0x46: return c - 0x41 + 10
-            default: return nil
-            }
-        }
-        var i = 0
-        while i < chars.count {
-            guard let hi = nibble(chars[i]), let lo = nibble(chars[i + 1]) else { return nil }
-            bytes.append(hi << 4 | lo)
-            i += 2
-        }
-        self = Data(bytes)
     }
 }

@@ -74,6 +74,11 @@ final class CalculatorHistoryStore {
         }
     }
 
+    func replace(_ imported: [CalcHistoryEntry]) {
+        entries = Array(imported.sorted { $0.createdAt > $1.createdAt }.prefix(Self.cap))
+        persist()
+    }
+
     private func persist() {
         revision &+= 1
         if let data = try? JSONEncoder().encode(entries) {

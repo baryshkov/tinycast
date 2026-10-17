@@ -9,6 +9,16 @@ final class PaletteCoordinator {
     private let fileSearch: FileSearchSession
     private let windowController: PaletteWindowController
 
+    var onShow: ((PaletteMode) -> Void)?
+    var onHide: (() -> Void)?
+    var panelFrame: CGRect? { windowController.panelFrame }
+    var previousOwnWindow: NSWindow? { windowController.previousOwnWindow }
+    func isShowing(_ mode: PaletteMode) -> Bool { isVisible && palette.mode == mode }
+    func togglePalette(mode: PaletteMode, seeding query: String? = nil) {
+        if isShowing(mode), query == nil { hidePalette(); return }
+        showPalette(mode: mode)
+        if let query { palette.query = query }
+    }
     init(
         palette: PaletteState,
         settings: AppSettings,
@@ -63,14 +73,18 @@ final class PaletteCoordinator {
         if !(preserved && (restoreAnyMode || palette.mode == mode)) {
             palette.prepare(mode: mode)
         }
+        palette.isVisible = true
         windowController.show()
+        onShow?(palette.mode)
         if palette.mode == .fileSearch { fileSearch.search(palette.query) }
         // Re-scan on open so an app uninstalled since the last scan drops out of the launcher.
         if palette.mode == .launcher { Task { await appIndex.refresh() } }
     }
 
     func hidePalette(restoreFocus: Bool = true) {
+        palette.isVisible = false
         fileSearch.cancel()
+        onHide?()
         windowController.hide(restoreFocus: restoreFocus)
     }
 

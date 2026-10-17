@@ -16,6 +16,7 @@ struct LauncherScreen: PaletteScreen {
     /// The one ordered result list; an empty query pins favorites above the ranked matches.
     private let results: [AppEntry]
     private let calc: CalcResult?
+    private let files: [FileSearchResult]
     /// Sections stand in for the ranked Results list, which a typed query collapses to.
     private let showSections: Bool
     /// Only the empty query pins favorites — a category shows its sections without one of its own.
@@ -44,23 +45,27 @@ struct LauncherScreen: PaletteScreen {
         let calc = CalcMemo.evaluate(vm.query, rates: currencyRates.rates)
         let entries = results.map(Row.entry)
         let pinsFavorites = vm.query.trimmingCharacters(in: .whitespaces).isEmpty
+        let files = core.fileSearchCoordinator.launcherFiles(for: vm.query)
+        self.files = files
         self.results = results
         self.calc = calc
         self.showSections = pinsFavorites || AppEntry.Kind.named(by: vm.query) != nil
         self.pinsFavorites = pinsFavorites
         self.favoriteCount = pinsFavorites ? results.prefix(while: favorites.isFavorite).count : 0
-        self.rows = calc.map { [.calc($0)] + entries } ?? entries
+        self.rows = (calc.map { [.calc($0)] + entries } ?? entries) + files.map(Row.file)
     }
 
     /// The card is a row like any other, so the flat selection indexes `rows` with no offset.
     enum Row: Equatable, Identifiable {
         case calc(CalcResult)
         case entry(AppEntry)
+        case file(FileSearchResult)
 
         var id: String {
             switch self {
             case .calc: return "calc-card"
             case .entry(let app): return app.id
+            case .file(let file): return "file:" + file.id
             }
         }
     }
@@ -75,6 +80,7 @@ struct LauncherScreen: PaletteScreen {
         switch row(at: clampedSelection) {
         case .calc: return "Copy Answer"
         case .entry(let app): return app.kind.descriptor.openVerb
+        case .file: return "Open File"
         case nil: return "Open Application"
         }
     }
@@ -141,6 +147,8 @@ struct LauncherScreen: PaletteScreen {
                     // Reset can move the item; keep the highlight on the item whose action ran.
                     if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
                 })
+        case .file(let file):
+            return FileSearchActionsMenu.content(result: file, core: core)
         case nil:
             return nil
         }
@@ -153,6 +161,7 @@ struct LauncherScreen: PaletteScreen {
         case .entry(let app):
             core.launcherCoordinator.launch(
                 app, searchQuery: vm.query, arguments: argumentValues(for: app))
+        case .file(let file): core.fileSearchCoordinator.open(file)
         case nil: break
         }
     }
@@ -165,11 +174,11 @@ struct LauncherScreen: PaletteScreen {
     }
 
     /// ⌃⇧Q — the screen owns the chord, but only a running application has anything to quit.
-    func quit(at selection: Int) -> Bool {
+    func quit(at selection: Int, force: Bool = false) -> Bool {
         guard let app = entry(at: selection), app.kind == .application,
             core.runningApps.isRunning(app)
         else { return false }
-        core.launcherCoordinator.quit(app)
+        core.launcherCoordinator.quit(app, force: force)
         return true
     }
 
@@ -270,7 +279,15 @@ struct LauncherScreen: PaletteScreen {
     private func content(selection: Int, scroll: ScrollIntent) -> some View {
         LauncherList(
             results: results,
+            files: files,
+            selectedFileID: { if case .file(let file) = row(at: selection) { return file.id }; return nil }(),
+            onActivateFile: { core.fileSearchCoordinator.open($0) },
+            onFileActions: { file in
+                if let index = rows.firstIndex(of: .file(file)) { vm.selection = index }
+                openActions()
+            },
             selectedID: entry(at: selection)?.id,
+            suggestionCount: pinsFavorites ? appIndex.suggestionCount(in: results, favorites: favorites) : 0,
             favoriteCount: favoriteCount,
             showSections: showSections,
             scroll: scroll,

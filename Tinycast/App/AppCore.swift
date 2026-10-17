@@ -19,6 +19,16 @@ final class AppCore {
     let hotKeys = HotKeyManager()
     let hyperKeyTap = HyperKeyTap()
     let windowMover = WindowMover()
+    let spaceSwitcher = SpaceSwitcher()
+    let windowLayouts = WindowLayoutStore()
+    let customWindowSizes = CustomWindowSizeStore()
+    let rooms = RoomStore()
+    let roomMinimums = RoomMinimumSizeStore()
+    let roomParking = RoomParkingLedger(
+        fileURL: AppPaths.applicationSupport().appendingPathComponent("room-parking.json"))
+    let roomSession = RoomSession()
+    let windowSwitch = WindowSwitchSession()
+    var pendingWindowLayoutEdit: WindowLayoutEditRequest?
     let inputSourceSwitcher = InputSourceSwitcher()
     let settings: AppSettings
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
@@ -32,7 +42,14 @@ final class AppCore {
     let frequentEmoji = FrequentEmojiStore()
     let runningApps = RunningAppsMonitor()
     let palette = PaletteState()
-    let fileSearch = FileSearchSession()
+    @ObservationIgnored private var settingsFile: SettingsFileRepository?
+    let fileIndexer = FileIndexer()
+    @ObservationIgnored private(set) lazy var windowSwitchCoordinator = WindowSwitchCoordinator(
+        settings: settings, appIndex: appIndex, session: windowSwitch, palette: palette,
+        paletteCoordinator: paletteCoordinator, core: self)
+    @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(core: self)
+
+    @ObservationIgnored private(set) lazy var fileSearch = FileSearchSession(index: fileIndexer.index)
     let activationPolicy = ActivationPolicy()
     let uninstall = UninstallSession()
     let quicklinkArguments = QuicklinkArgumentSession()
@@ -73,7 +90,25 @@ final class AppCore {
         extensions: extensions, palette: palette, paletteCoordinator: paletteCoordinator,
         settingsCoordinator: settingsCoordinator, settings: settings, core: self)
     @ObservationIgnored private(set) lazy var windowCommandCoordinator = WindowCommandCoordinator(
-        settings: settings, paletteCoordinator: paletteCoordinator, windowMover: windowMover)
+        settings: settings, paletteCoordinator: paletteCoordinator, windowMover: windowMover,
+        spaceSwitcher: spaceSwitcher, customSizes: customWindowSizes)
+    @ObservationIgnored private(set) lazy var customWindowSizeCoordinator =
+        CustomWindowSizeCoordinator(
+            store: customWindowSizes, settings: settings, appIndex: appIndex, hotKeys: hotKeys,
+            favorites: favorites, visibility: visibility, ranking: launcherRanking,
+            aliases: aliases, core: self)
+    @ObservationIgnored private(set) lazy var windowShortcutPresetCoordinator =
+        WindowShortcutPresetCoordinator(hotKeys: hotKeys, core: self)
+    @ObservationIgnored private(set) lazy var windowLayoutCoordinator = WindowLayoutCoordinator(
+        store: windowLayouts, settings: settings, appIndex: appIndex, hotKeys: hotKeys,
+        favorites: favorites, visibility: visibility, ranking: launcherRanking, aliases: aliases,
+        paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
+        core: self)
+    @ObservationIgnored private(set) lazy var roomCoordinator = RoomCoordinator(
+        store: rooms, minimums: roomMinimums, ledger: roomParking, session: roomSession,
+        settings: settings, appIndex: appIndex, hotKeys: hotKeys, favorites: favorites,
+        visibility: visibility, ranking: launcherRanking, aliases: aliases, palette: palette,
+        paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var customCommandCoordinator = CustomCommandCoordinator(
         store: customCommands, settings: settings, appIndex: appIndex,
         paletteCoordinator: paletteCoordinator, settingsCoordinator: settingsCoordinator,
@@ -105,7 +140,7 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var calculatorCoordinator = CalculatorCoordinator(
         calcHistory: calcHistory, paletteCoordinator: paletteCoordinator, core: self)
     @ObservationIgnored private(set) lazy var fileSearchCoordinator = FileSearchCoordinator(
-        settings: settings, appIndex: appIndex, session: fileSearch, palette: palette,
+        settings: settings, appIndex: appIndex, session: fileSearch, indexer: fileIndexer, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
 
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
@@ -153,6 +188,32 @@ final class AppCore {
             appIndex.start(settings: settings)
             extensions.start(appIndex: appIndex, coordinator: extensionCoordinator)
             extensionCoordinator.applyEnabled()
+            appIndex.hotKeys = hotKeys
+            customWindowSizes.onChange = { [weak self] _ in
+                self?.customWindowSizeCoordinator.applyCustomWindowSizesPresence()
+            }
+            windowLayouts.onChange = { [weak self] _ in
+                self?.windowLayoutCoordinator.applyWindowLayoutsPresence()
+            }
+            rooms.onChange = { [weak self] _ in self?.roomCoordinator.applyRoomsPresence() }
+            customWindowSizeCoordinator.applyCustomWindowSizesPresence()
+            windowLayoutCoordinator.applyWindowLayoutsPresence()
+            roomCoordinator.applyEnabled()
+            roomCoordinator.recoverParkedWindows()
+            windowSwitchCoordinator.applyEnabled()
+            paletteCoordinator.onShow = { [weak self] mode in
+                guard let self else { return }
+                switch mode {
+                case .switchWindows: windowSwitchCoordinator.load()
+                case .rooms, .roomWindows: roomCoordinator.load()
+                default: break
+                }
+            }
+            paletteCoordinator.onHide = { [weak self] in
+                self?.roomCoordinator.paletteDidHide()
+                self?.windowSwitch.reset()
+            }
+            applySettingsFile()
             fileSearchCoordinator.applyEnabled()
             fileSearchCoordinator.applyPolicy()
             notesCoordinator.applyEnabled()
@@ -181,6 +242,17 @@ final class AppCore {
             hotKeys.onShowNotes = { [weak self] in self?.notesCoordinator.show() }
             hotKeys.onCreateNote = { [weak self] in self?.notesCoordinator.createNote() }
             hotKeys.onSearchNotes = { [weak self] in self?.notesCoordinator.searchNotes() }
+            hotKeys.onCustomWindowSize = { [weak self] in
+                self?.windowCommandCoordinator.runCustomWindowSize(id: $0)
+            }
+            hotKeys.onWindowLayout = { [weak self] in self?.windowLayoutCoordinator.runWindowLayout(id: $0) }
+            hotKeys.onWindowRoom = { [weak self] in self?.roomCoordinator.enterRoom(id: $0) }
+            hotKeys.onSwitchWindows = { [weak self] in self?.windowSwitchCoordinator.show() }
+            hotKeys.onSwitchWindowsBackwards = { [weak self] in
+                self?.windowSwitchCoordinator.show(backwards: true)
+            }
+            hotKeys.onSwitchRoom = { [weak self] in self?.roomCoordinator.showRooms() }
+            hotKeys.onCreateRoom = { [weak self] in self?.roomCoordinator.createRoom() }
             hotKeys.onSearchFiles = { [weak self] in self?.fileSearchCoordinator.show() }
             hotKeys.onRunCustomCommand = { [weak self] id in
                 self?.customCommandCoordinator.runCustomCommand(id: id)
@@ -250,13 +322,17 @@ final class AppCore {
         case .settingsPane(let bundleID):
             return appIndex.apps.first { $0.kind == .systemSettings && $0.bundleID == bundleID }?
                 .name
+        case .customWindowSize(let id): return customWindowSizes.size(id: id)?.name
+        case .windowLayout(let id): return windowLayouts.layout(id: id)?.name
+        case .windowRoom(let id): return rooms.room(id: id)?.name
         case .customCommand(let id):
             return customCommands.command(id: id)?.name
         case .quicklink(let id):
             return quicklinks.quicklink(id: id)?.name
         case .extensionCommand(let entryID):
             return appIndex.apps.first { $0.kind == .extensionCommand && $0.id == entryID }?.name
-        case .togglePalette, .toggleClipboard, .toggleEmoji, .searchFiles, .systemAction,
+        case .switchWindows, .switchWindowsBackwards, .switchRoom, .createRoom, .togglePalette,
+            .toggleClipboard, .toggleEmoji, .searchFiles, .systemAction,
             .showNotes, .createNote, .searchNotes, .windowCommand:
             return nil
         }
@@ -266,8 +342,25 @@ final class AppCore {
         await notesCoordinator.prepareForTermination()
     }
 
+    func applySettingsFile() {
+        settingsFile?.flush()
+        settingsFile = nil
+        guard settings.settingsFileEnabled else { return }
+        let file = SettingsFileRepository(
+            fileURL: AppPaths.settingsFile(), bindings: SettingsFileSchema.bindings(settings: settings))
+        file.onIssues = { [weak self] issues in
+            guard let summary = SettingsFileIssue.summary(issues) else { return }
+            self?.showMessage(summary, tone: .danger)
+        }
+        settingsFile = file
+        file.start(importing: true)
+    }
+
     func prepareForTermination() {
         // Caps Lock first: its remap is the one teardown that outlives the process.
+        windowLayoutCoordinator.prepareForTermination()
+        roomCoordinator.prepareForTermination()
+        settingsFile?.flush()
         hyperKeyTap.prepareForTermination()
         inputSourceSwitcher.endSession()
         snippetTextInjector.prepareForTermination()
@@ -293,6 +386,15 @@ final class AppCore {
                 _ = $0.quicklinksEnabled
                 _ = $0.quicklinksShowInLauncher
             }, reproject: { $0.quicklinkCoordinator.applyQuicklinksPresence() })
+        track(
+            { _ = $0.windowManagementEnabled },
+            reproject: {
+                $0.customWindowSizeCoordinator.applyCustomWindowSizesPresence()
+                $0.windowLayoutCoordinator.applyWindowLayoutsPresence()
+                $0.roomCoordinator.applyEnabled()
+            })
+        track({ _ = $0.settingsFileEnabled }, reproject: { $0.applySettingsFile() })
+        track({ _ = $0.navigationEnabled }, reproject: { $0.windowSwitchCoordinator.applyEnabled() })
         track({ _ = $0.fileSearchEnabled }, reproject: { $0.fileSearchCoordinator.applyEnabled() })
         track({ _ = $0.notesEnabled }, reproject: { $0.notesCoordinator.applyEnabled() })
         track(

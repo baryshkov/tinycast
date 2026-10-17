@@ -56,6 +56,9 @@ struct RootPaletteView: View {
             return EmojiScreen(
                 index: emojiIndex, frequent: frequentEmoji, core: core, vm: vm,
                 tone: settings.emojiSkinTone, openActions: openActions)
+        case .switchWindows: return WindowSwitchScreen(session: core.windowSwitch, core: core)
+        case .rooms: return RoomsScreen(coordinator: core.roomCoordinator, session: core.roomSession, vm: vm)
+        case .roomWindows: return RoomPickerScreen(coordinator: core.roomCoordinator, session: core.roomSession, vm: vm)
         case .fileSearch:
             return FileSearchScreen(
                 session: fileSearch, core: core, vm: vm, openActions: openActions)
@@ -144,7 +147,7 @@ struct RootPaletteView: View {
             (count > 0 || vm.mode == .quicklinkArguments) && screen.hasPrimaryAction(at: sel)
 
         // One header position, so focus survives the swap. See docs/features/palette.md.
-        return Group {
+        let content = Group {
             if isCollapsed {
                 Color.clear
             } else {
@@ -217,6 +220,8 @@ struct RootPaletteView: View {
         .background(Theme.Colors.panelScrim)
         .background(VisualEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
+
+        let observed = content
         // Every show bumps focusToken: refocus search and drop any menu left open.
         .onChange(of: vm.focusToken) {
             searchFocused = true
@@ -225,7 +230,9 @@ struct RootPaletteView: View {
         .onChange(of: vm.query) {
             vm.selection = 0
             scroll = ScrollIntent(kind: .top)
-            if vm.mode == .fileSearch { fileSearch.search(vm.query) }
+            if vm.mode == .switchWindows { core.windowSwitch.filter(vm.query) }
+            if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
+            if vm.mode == .launcher { core.fileSearchCoordinator.searchFromLauncher(vm.query) }
             // A command that took over the search text filters its own list.
             if vm.mode == .extensionCommand, let handler = extensionScreen.searchTextHandler {
                 extensions.dispatch(handler: handler, arguments: [vm.query])
@@ -243,7 +250,7 @@ struct RootPaletteView: View {
             scroll = ScrollIntent(kind: .top)
             // Every way out of the Uninstall screen: back chevron, bare backspace, a fresh summon.
             if vm.mode != .uninstall { uninstall.cancel() }
-            if vm.mode != .fileSearch { fileSearch.cancel() }
+            if vm.mode != .fileSearch && vm.mode != .launcher { fileSearch.cancel() }
             // Leaving the screen any other way than Escape still ends the command's session.
             if vm.mode != .extensionCommand, extensions.running != nil {
                 Task { await extensions.stop() }
@@ -266,6 +273,8 @@ struct RootPaletteView: View {
         .onChange(of: core.paletteCoordinator.paletteIsCollapsed) {
             core.paletteCoordinator.syncPaletteSize()
         }
+
+        return observed
         // ⌘1–⌘9/⌘0 launch favorites by position, in both palette sizes.
         .onKeyPress(keys: Self.favoriteSlotKeys, phases: .down) { press in
             guard press.modifiers.contains(.command),
@@ -329,6 +338,7 @@ struct RootPaletteView: View {
                 closeMenus()
                 return .handled
             }
+            if vm.pop() { return .handled }
             // An extension pops its own navigation stack before the command is left.
             if vm.mode == .extensionCommand {
                 core.extensionCoordinator.exitExtensionScreen()
@@ -337,7 +347,10 @@ struct RootPaletteView: View {
             core.paletteCoordinator.hidePalette()
             return .handled
         }
+        .onChange(of: settings.interfaceSize) { core.paletteCoordinator.syncPaletteSize() }
         .onKeyPress(.tab) {
+            if !menuOpen, let rooms = screen as? RoomsScreen { return rooms.tab(at: sel, backwards: false) ? .handled : .ignored }
+            if !menuOpen, let rooms = screen as? RoomsScreen { return rooms.tab(at: sel, backwards: false) ? .handled : .ignored }
             if !menuOpen { advanceTabFocus() }
             return .handled
         }
@@ -414,7 +427,9 @@ struct RootPaletteView: View {
             guard press.modifiers.contains(.control), press.modifiers.contains(.shift),
                 !isCollapsed, let launcher = screen as? LauncherScreen
             else { return .ignored }
-            return launcher.quit(at: selection(in: launcher)) ? .handled : .ignored
+            return launcher.quit(
+                at: selection(in: launcher), force: press.modifiers.contains(.option)
+            ) ? .handled : .ignored
         }
     }
 

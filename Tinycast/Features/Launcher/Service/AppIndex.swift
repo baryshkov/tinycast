@@ -71,6 +71,11 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     let kind: Kind
     /// Extra strings matching as strongly as the name; empty for every kind but snippets.
     var matchAliases: [String] = []
+    var primaryInstallationID: String?
+    var subtitle: String?
+    var installedAt: Date?
+    var search = SearchProfile.unnamed
+    var isPrimaryInstallation: Bool { primaryInstallationID == nil || primaryInstallationID == id }
     /// Per-item symbol, for the one kind whose glyph is the user's choice. Nil elsewhere.
     var symbolName: String?
     /// Spotlight's `kMDItemAlternateNames`, ranked below the display name. Applications only.
@@ -107,6 +112,9 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .systemAction:
             return SystemActionCatalog.action(forEntryID: id).map { .systemAction(id: $0.id) }
         case .windowCommand:
+            if let uuid = CustomWindowSize.id(fromEntryID: id) { return .customWindowSize(id: uuid) }
+            if let uuid = WindowLayout.id(fromEntryID: id) { return .windowLayout(id: uuid) }
+            if let uuid = Room.id(fromEntryID: id) { return .windowRoom(id: uuid) }
             return WindowCommandCatalog.command(forEntryID: id).map { .windowCommand(id: $0.id) }
         case .quicklink:
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
@@ -163,6 +171,35 @@ extension AppEntry.Kind {
     }
 }
 
+extension AppEntry {
+    init(_ command: WindowCommand) {
+        self.init(
+            id: command.entryID, name: command.name,
+            url: URL(string: "tinycast://window-command/" + command.id.rawValue)!, bundleID: nil,
+            kind: .windowCommand)
+    }
+
+    init(_ size: CustomWindowSize) {
+        self.init(
+            id: size.entryID, name: size.name,
+            url: URL(string: "tinycast://window-size/" + size.id.uuidString)!, bundleID: nil,
+            kind: .windowCommand)
+    }
+    init(_ layout: WindowLayout) {
+        self.init(
+            id: layout.entryID, name: layout.name,
+            url: URL(string: "tinycast://window-layout/" + layout.id.uuidString)!, bundleID: nil,
+            kind: .windowCommand, symbolName: layout.iconSymbol)
+    }
+    init(_ room: Room) {
+        self.init(
+            id: room.entryID, name: room.name,
+            url: URL(string: "tinycast://window-room/" + room.id.uuidString)!, bundleID: nil,
+            kind: .windowCommand)
+    }
+
+}
+
 @MainActor
 @Observable
 final class AppIndex {
@@ -175,6 +212,7 @@ final class AppIndex {
         let entriesRevision: Int
         let rankingRevision: Int
         let aliasRevision: Int
+        let sensitivity: SearchSensitivity
     }
 
     private struct ResultsKey: Equatable {
@@ -182,8 +220,12 @@ final class AppIndex {
         let entriesRevision: Int
         let rankingRevision: Int
         let aliasRevision: Int
+        let sensitivity: SearchSensitivity
         let visibilityRevision: Int
         let favoritesRevision: Int
+        let hotKeysRevision: Int
+        let showsSuggestions: Bool
+        let minute: Int
     }
 
     /// Repeated renders for the same query reuse the ranking instead of re-matching every frame.
@@ -216,8 +258,12 @@ final class AppIndex {
     private var quicklinkEntries: [AppEntry] = []
     private var extensionEntries: [AppEntry] = []
     /// The catalog's commands a disabled feature hides; the Commands slice is recomputed from it.
+    private var unlistedCommands = Set<CommandID>()
+    private var sizeEntries: [AppEntry] = []
+    private var layoutEntries: [AppEntry] = []
+    private var roomEntries: [AppEntry] = []
     private var hiddenCommands: Set<CommandID> = []
-    private var alternateNameCache = SpotlightNames.Cache()
+    private var alternateNameCache = BundleNameCache()
     private var paneCache: SettingsPaneScanner.Cache?
     private var isRefreshing = false
     /// Set when a refresh lands mid-scan, so a scope edit is never silently dropped.
@@ -235,11 +281,23 @@ final class AppIndex {
     private var commandEntries: [AppEntry] {
         CommandCatalog.all.filter {
             guard let command = CommandCatalog.command(for: $0) else { return true }
-            return !hiddenCommands.contains(command)
+            return !hiddenCommands.contains(command) && !unlistedCommands.contains(command)
         }
     }
 
     /// A feature's commands leave the Commands slice when the feature is off; `visible` restores them.
+    func setCommandsListed(_ commands: Set<CommandID>, _ listed: Bool) {
+        unlistedCommands = listed ? unlistedCommands.subtracting(commands) : unlistedCommands.union(commands)
+        publishEntries()
+    }
+    func setCustomWindowSizes(_ values: [CustomWindowSize]) {
+        sizeEntries = values.map(AppEntry.init); publishEntries()
+    }
+    func setWindowLayouts(_ values: [WindowLayout]) {
+        layoutEntries = values.map(AppEntry.init); publishEntries()
+    }
+    func setWindowRooms(_ values: [Room]) { roomEntries = values.map(AppEntry.init); publishEntries() }
+
     func setCommandsVisible(_ commands: Set<CommandID>, _ visible: Bool) {
         let updated = visible ? hiddenCommands.subtracting(commands) : hiddenCommands.union(commands)
         guard updated != hiddenCommands else { return }
@@ -349,7 +407,8 @@ final class AppIndex {
             let reusingPanes = paneCache
             let (found, cache, panes) = await Task.detached(priority: .utility) {
                 AppIndex.scan(
-                    scopes: scopes, cache: SpotlightNames.Cache(reusing: reusing),
+                    scopes: scopes,
+                    cache: BundleNameCache(reusing: reusing, languages: Locale.preferredLanguages),
                     paneCache: reusingPanes)
             }.value
             alternateNameCache = cache
@@ -361,37 +420,66 @@ final class AppIndex {
     }
 
     nonisolated private static func scan(
-        scopes: [String], cache: SpotlightNames.Cache, paneCache: SettingsPaneScanner.Cache?
-    ) -> ([AppEntry], SpotlightNames.Cache, SettingsPaneScanner.Cache?) {
+        scopes: [String], cache: BundleNameCache, paneCache: SettingsPaneScanner.Cache?
+    ) -> ([AppEntry], BundleNameCache, SettingsPaneScanner.Cache?) {
         Signposts.interval("AppIndex.scan") {
             var cache = cache
-            var seenBundleIDs = Set<String>()
+            var indexByBundleID: [String: Int] = [:]
+            var paths = Set<String>()
             var result: [AppEntry] = []
             for url in SearchScopes.appBundles(in: scopes) {
+                let path = url.resolvingSymlinksInPath().standardizedFileURL.path
+                guard paths.insert(path).inserted else { continue }
                 let bundle = Bundle(url: url)
                 let bundleID = bundle?.bundleIdentifier
-                // Dedup by bundle id; the earliest scope wins.
-                if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
-
-                let name =
-                    (bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-                    ?? (bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String)
-                    ?? url.deletingPathExtension().lastPathComponent
-                let executable =
-                    bundle?.object(forInfoDictionaryKey: "CFBundleExecutable") as? String
-                result.append(
-                    AppEntry(
-                        id: url.path, name: name, url: url, bundleID: bundleID,
-                        kind: .application,
-                        alternateNames: cache.alternateNames(for: url, displayName: name),
-                        // A binary named after the app adds nothing the display name lacks.
-                        executableName: executable.flatMap {
-                            $0.caseInsensitiveCompare(name) == .orderedSame ? nil : $0
-                        }))
+                let fileName = EntryNaming.strippingAppExtension(url.lastPathComponent)
+                // Finder's rule: LaunchServices ignores a display name the file name contradicts.
+                let names = cache.names(
+                    for: url, base: fileName, developmentRegion: bundle?.developmentLocalization)
+                // Raw: a localized strings file can swap this array for a plain name.
+                let alternates = bundle?.infoDictionary?["CFBundleAlternateNames"] as? [String] ?? []
+                let declared = [bundle?.installedAppName].compactMap { $0 }
+                var entry = AppEntry(
+                    id: path, name: names.first ?? fileName, url: url, bundleID: bundleID, kind: .application)
+                entry.subtitle = AppDisplayName.named(bundle?.infoDictionary?["CFBundleShortVersionString"])
+                entry.alternateNames = Array(names.dropFirst()) + alternates
+                entry.installedAt = try? url.resourceValues(forKeys: [.addedToDirectoryDateKey])
+                    .addedToDirectoryDate
+                if !entry.alternateNames.contains(fileName) { entry.alternateNames.append(fileName) }
+                entry.alternateNames += declared
+                if let bundleID {
+                    if let first = indexByBundleID[bundleID] {
+                        entry.primaryInstallationID = result[first].id
+                        result[first].primaryInstallationID = result[first].id
+                    } else {
+                        indexByBundleID[bundleID] = result.count
+                    }
+                }
+                result.append(entry)
             }
-            // Slice order is section order, so the flat selection maps 1:1 onto rows.
+            let byName = Dictionary(grouping: result.indices) { FuzzyMatch.normalized(result[$0].name) }
+            for group in byName.values {
+                let byVersion = Dictionary(grouping: group) { result[$0].subtitle ?? "" }
+                for index in group {
+                    guard group.count > 1 || result[index].primaryInstallationID != nil else {
+                        result[index].subtitle = nil
+                        continue
+                    }
+                    if result[index].subtitle == nil
+                        || (byVersion[result[index].subtitle ?? ""]?.count ?? 0) > 1
+                    {
+                        let folder = SearchScopes.abbreviate(
+                            result[index].url.deletingLastPathComponent().path)
+                        result[index].subtitle = [result[index].subtitle, folder].compactMap { $0 }
+                            .joined(separator: " · ")
+                    }
+                }
+            }
             let apps = result.sorted {
-                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                let byName = $0.name.localizedCaseInsensitiveCompare($1.name)
+                if byName != .orderedSame { return byName == .orderedAscending }
+                if $0.isPrimaryInstallation != $1.isPrimaryInstallation { return $0.isPrimaryInstallation }
+                return $0.id < $1.id
             }
             // Settings panes are `.appex` bundles, which carry no Spotlight alternate names.
             let (panes, panesCache) = SettingsPaneScanner.scan(cache: paneCache)
@@ -401,10 +489,11 @@ final class AppIndex {
 
     private func publishEntries() {
         // Each slice arrives in its own display order; the slice order is the section order.
-        let updated =
+        var updated =
             discoveredEntries + extensionEntries + quicklinkEntries + snippetEntries
             + Self.systemActionEntries + windowCommandEntries + customCommandEntries
-            + commandEntries
+            + sizeEntries + layoutEntries + roomEntries + commandEntries
+        for index in updated.indices { updated[index].search = profile(for: updated[index]) }
         guard updated != apps else { return }
         apps = updated
         entriesRevision &+= 1
@@ -416,7 +505,7 @@ final class AppIndex {
         guard !q.isEmpty else { return apps }
         let key = MatchKey(
             query: q, entriesRevision: entriesRevision, rankingRevision: ranking.revision,
-            aliasRevision: aliases.revision)
+            aliasRevision: aliases.revision, sensitivity: settings?.rootSearchSensitivity ?? .default)
         return matchMemo.value(for: key) {
             guard let kind = AppEntry.Kind.named(by: q) else { return rank(q, limit: limit) }
             return categoryListing(kind, query: q)
@@ -436,38 +525,65 @@ final class AppIndex {
         let q = query.trimmingCharacters(in: .whitespaces)
         let key = ResultsKey(
             query: q, entriesRevision: entriesRevision, rankingRevision: ranking.revision,
-            aliasRevision: aliases.revision, visibilityRevision: visibility.revision,
-            favoritesRevision: favorites.revision)
+            aliasRevision: aliases.revision, sensitivity: settings?.rootSearchSensitivity ?? .default,
+            visibilityRevision: visibility.revision,
+            favoritesRevision: favorites.revision,
+            hotKeysRevision: hotKeys?.revision ?? 0,
+            showsSuggestions: settings?.launcherShowsSuggestions ?? true,
+            minute: Int(Date.now.timeIntervalSince1970 / 60))
         return resultsMemo.value(for: key) {
             // Filtering stays downstream of `matches` so that memo is never keyed on hidden state.
             let base = matches(q).filter(visibility.isVisible)
-            guard q.isEmpty, !favorites.keys.isEmpty else { return base }
-            let split = favorites.ordered(base)
-            return split.favorites + split.rest
+            guard q.isEmpty else { return base }
+            let split = favorites.ordered(base.filter(\.isPrimaryInstallation))
+            guard settings?.launcherShowsSuggestions ?? true else { return split.favorites + split.rest }
+            let suggested = suggestions(from: split.rest)
+            let selected = Set(suggested.map(\.id))
+            return split.favorites + suggested + split.rest.filter { !selected.contains($0.id) }
         }
+    }
+
+    @ObservationIgnored weak var hotKeys: HotKeyManager?
+
+    private func suggestions(from entries: [AppEntry]) -> [AppEntry] {
+        let usage = ranking.snapshot()
+        return LauncherSuggestions.select(
+            from: entries.filter { $0.bundleID != Bundle.main.bundleIdentifier }, now: usage.now
+        ) { entry in
+            LauncherSuggestions.Traits(
+                signals: signals(for: entry, usage: usage), installedAt: entry.installedAt,
+                hasHotKey: entry.hotKeyAction.flatMap { hotKeys?.binding(for: $0) } != nil,
+                priority: entry.kind == .application ? nil : 1)
+        }
+    }
+
+    func suggestionCount(in entries: [AppEntry], favorites: FavoritesStore) -> Int {
+        guard settings?.launcherShowsSuggestions ?? true else { return 0 }
+        return suggestions(from: entries.filter { !favorites.isFavorite($0) && $0.isPrimaryInstallation })
+            .count
+    }
+
+    private func profile(for entry: AppEntry) -> SearchProfile {
+        var source = EntryNaming.Sources(name: entry.name)
+        source.alternateTitles = entry.matchAliases + entry.alternateNames
+        source.subtitle = entry.subtitle ?? entry.labelOverride
+        source.keywords = [entry.bundleID, entry.executableName].compactMap { $0 }
+        return EntryNaming.profile(for: source)
+    }
+
+    private func signals(for entry: AppEntry, usage: LauncherRankingStore.Snapshot) -> LauncherOrder.Signals {
+        LauncherOrder.Signals(
+            alias: aliases.alias(for: entry.preferenceKey).map { SearchText($0, transliterated: false) },
+            usage: usage.usage(for: entry.preferenceKey), priority: entry.kind == .application ? 2 : 1,
+            title: entry.name)
     }
 
     private func rank(_ q: String, limit: Int) -> [AppEntry] {
         Signposts.interval("AppIndex.rank") {
-            let learned = ranking.boosts(query: q)
-            let scored = apps.compactMap { app -> (AppEntry, Int)? in
-                var fields = app.searchFields
-                fields.userAlias = aliases.alias(for: app.preferenceKey)
-                // Base relevance is the strongest field; the boost is added blind to it.
-                guard let score = SearchRelevance.score(query: q, fields: fields) else {
-                    return nil
-                }
-                return (app, score + (learned[app.preferenceKey] ?? 0))
-            }
-            return
-                scored
-                .sorted {
-                    $0.1 != $1.1
-                        ? $0.1 > $1.1
-                        : $0.0.name.localizedCaseInsensitiveCompare($1.0.name) == .orderedAscending
-                }
-                .prefix(limit)
-                .map(\.0)
+            let usage = ranking.snapshot()
+            return LauncherOrder.ranked(
+                apps, query: LauncherOrder.Query(q), sensitivity: settings?.rootSearchSensitivity ?? .default,
+                limit: limit, profile: \.search, signals: { signals(for: $0, usage: usage) })
         }
     }
 }

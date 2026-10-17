@@ -103,6 +103,14 @@ final class NotesStore {
         return !isDirty
     }
 
+    func importNotes(_ notes: [NotesRepository.Incoming]) async -> Int {
+        guard await flush() else { return 0 }
+        let repository = repository
+        let count = await Task.detached(priority: .userInitiated) { (try? repository.importNotes(notes)) ?? 0 }.value
+        _ = await reload()
+        return count
+    }
+
     @discardableResult
     func create() async -> Bool {
         guard await flush() else { return false }

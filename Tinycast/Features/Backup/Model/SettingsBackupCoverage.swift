@@ -4,6 +4,15 @@ import Foundation
 enum SettingsBackupCoverage {
     /// Each `SettingsData` field paired with the `AppSettings` key it mirrors.
     static let mirrored: [String: AppSettingsKey] = [
+        "rootSearchSensitivity": .rootSearchSensitivity,
+        "launcherShowsSuggestions": .launcherShowsSuggestions,
+        "fileSearchShowInLauncher": .fileSearchShowInLauncher,
+        "windowLayoutsShowInLauncher": .windowLayoutsShowInLauncher,
+        "windowRoomsShowInLauncher": .windowRoomsShowInLauncher,
+        "windowCycle": .windowCycle,
+        "navigationEnabled": .navigationEnabled,
+        "interfaceSize": .interfaceSize,
+
         "clipboardRetentionDays": .clipboardRetention,
         "clipboardDisabledApps": .clipboardDisabledApps,
         "hyperKey": .hyperKey,
@@ -44,6 +53,7 @@ enum SettingsBackupCoverage {
 
     /// Keys kept out of a backup on purpose, each with the reason it has to stay out.
     static let deliberatelyExcluded: [String: String] = [
+        AppSettingsKey.settingsFileEnabled.rawValue: "File synchronization is a local opt-in, never enabled by import.",
         AppSettingsKey.snippetsEnabled.rawValue:
             "Doubles as keyword-expansion consent; an import must not enable keystroke listening.",
         AppSettingsKey.extensionPackageManager.rawValue:

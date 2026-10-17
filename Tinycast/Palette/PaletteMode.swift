@@ -1,6 +1,7 @@
 import AppKit
 
 enum PaletteMode: String, CaseIterable, Identifiable {
+    case switchWindows, rooms, roomWindows
     case launcher
     case clipboard
     case calculatorHistory
@@ -16,6 +17,9 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .switchWindows: return "Switch Windows"
+        case .rooms: return "Rooms"
+        case .roomWindows: return "Choose Windows"
         case .launcher: return "Apps"
         case .clipboard: return "Clipboard"
         case .calculatorHistory: return "Calculator History"
@@ -29,6 +33,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     }
     var systemImage: String {
         switch self {
+        case .switchWindows: return "macwindow.on.rectangle"
+        case .rooms, .roomWindows: return "rectangle.3.group"
         case .launcher: return "magnifyingglass"
         case .clipboard: return "doc.on.doc"
         case .calculatorHistory: return "plus.forwardslash.minus"
@@ -41,6 +47,9 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     }
     var placeholder: String {
         switch self {
+        case .switchWindows: return "Search windows…"
+        case .rooms: return "Search rooms or type a new name…"
+        case .roomWindows: return "Search windows and apps…"
         case .launcher: return "Search for apps and commands…"
         case .clipboard: return "Type to filter entries…"
         case .calculatorHistory: return "Do math, convert units, or search your past calculations…"

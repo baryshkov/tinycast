@@ -1,6 +1,6 @@
 --- a/Tinycast/DesignSystem/Theme.swift
 +++ b/Tinycast/DesignSystem/Theme.swift
-@@ -225,10 +225,48 @@
+@@ -340,10 +340,45 @@
      }
  }
  
@@ -40,17 +40,14 @@
 +
  extension View {
 -    /// A floating glass control surface, frosted so it reads brighter than clear glass.
-+    /// A floating control surface, frosted so it reads brighter than clear glass.
      func frosted(in shape: some Shape) -> some View {
 -        glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
 -            .tint(.clear)
 +        modifier(FrostedSurface(shape: shape, isInteractive: true))
-     }
-+
-+    /// The same surface for non-interactive floating panels (the popover menus), which must not lens under the cursor.
++    }
 +    func frostedMenu(in shape: some Shape) -> some View {
 +        modifier(FrostedSurface(shape: shape, isInteractive: false))
-+    }
+     }
  }
 --- a/Tinycast/DesignSystem/PopoverMenu.swift
 +++ b/Tinycast/DesignSystem/PopoverMenu.swift

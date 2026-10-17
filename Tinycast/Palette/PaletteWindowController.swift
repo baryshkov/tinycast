@@ -5,10 +5,11 @@ import SwiftUI
 @MainActor
 final class PaletteWindowController: NSObject, NSWindowDelegate {
     private unowned let core: AppCore
+    var panelFrame: CGRect? { panel?.frame }
     private var panel: PalettePanel?
     private(set) var previousApp: NSRunningApplication?
     /// Our key window at summon time, so hiding hands focus back to Settings, not a stale app.
-    private weak var previousOwnWindow: NSWindow?
+    private(set) weak var previousOwnWindow: NSWindow?
     private var popToRootTimer: Timer?
     /// The session anchor — the panel's top-left, resolved once per show, the top edge being the
     /// one that must not drift. See docs/features/palette.md#window-placement.
@@ -203,7 +204,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     private func ensurePanel() -> PalettePanel {
         if let panel { return panel }
-        let root = RootPaletteView()
+        let root = ScaledPaletteView(core: core)
             .environment(core)
             .environment(core.settings)
             .environment(core.palette)
@@ -285,9 +286,9 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// Size to height and place against the session anchor, so the list grows downward.
     private func positionPanel(_ panel: NSPanel, collapsed: Bool) {
         guard let anchor = resolveAnchor() else { return }
-        let height = collapsed ? Theme.Size.compactHeight : Theme.Size.panelHeight
+        let height = (collapsed ? Theme.Size.compactHeight : Theme.Size.panelHeight) * core.settings.interfaceSize.scale
         let frame = NSRect(
-            x: anchor.x, y: anchor.y - height, width: Theme.Size.panelWidth, height: height)
+            x: anchor.x, y: anchor.y - height, width: Theme.Size.panelWidth * core.settings.interfaceSize.scale, height: height)
         panel.setFrame(frame, display: true)
     }
 
@@ -310,7 +311,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         guard let stored = core.settings.palettePosition else { return nil }
         return PalettePlacement.restored(
             stored,
-            graspable: CGSize(width: Theme.Size.panelWidth, height: Theme.Size.compactHeight),
+            graspable: CGSize(width: Theme.Size.panelWidth * core.settings.interfaceSize.scale, height: Theme.Size.compactHeight * core.settings.interfaceSize.scale),
             visibleFrames: NSScreen.screens.map(\.visibleFrame),
             minimumVisible: Theme.Size.paletteMinimumVisible)
     }
@@ -318,7 +319,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// The untouched placement on one display; the summon path and the drop guides share it.
     private func defaultAnchor(on screen: NSScreen) -> CGPoint {
         PalettePlacement.defaultAnchor(
-            in: screen.visibleFrame, width: Theme.Size.panelWidth,
+            in: screen.visibleFrame, width: Theme.Size.panelWidth * core.settings.interfaceSize.scale,
             topMarginFraction: Theme.Size.paletteTopMarginFraction)
     }
 }

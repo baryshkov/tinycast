@@ -32,6 +32,13 @@ enum FuzzyMatch {
         }
     }
 
+    struct Candidate: Sendable {
+        let text: String
+        init(_ raw: String) { text = FuzzyMatch.normalized(raw) }
+    }
+    static func match(_ query: Query, candidate: Candidate) -> Match? { match(query, candidate: candidate.text) }
+    static let folding: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive, .widthInsensitive]
+
     /// Tiered relevance, or nil; tiers are spaced so a better kind always wins.
     static func match(query: String, candidate: String) -> Match? {
         match(Query(query), candidate: candidate)
@@ -65,17 +72,17 @@ enum FuzzyMatch {
     static let maximumScore = 100_000
 
     /// No scalar below U+00AD is `.format`, so ASCII names skip the rebuild and the ICU lookup.
-    private static func normalized(_ value: String) -> String {
+    static func normalized(_ value: String) -> String {
         guard value.unicodeScalars.contains(where: { $0.value >= 0xAD }) else {
             return value.lowercased()
         }
-        guard value.unicodeScalars.contains(where: { $0.properties.generalCategory == .format })
-        else { return value.lowercased() }
-        let scalars = value.unicodeScalars.filter {
-            $0.properties.generalCategory != .format
-        }
-        return String(String.UnicodeScalarView(scalars)).lowercased()
+        // Composed first, so a Korean or Vietnamese IME's decomposed input folds like typed text.
+        let composed = value.precomposedStringWithCanonicalMapping
+        let scalars = composed.unicodeScalars.filter { $0.properties.generalCategory != .format }
+        return String(String.UnicodeScalarView(scalars)).folding(options: folding, locale: nil)
     }
+
+    /// Locale-independent: a Turkish fold maps "I" to "ı" and orphans every stored key.
 
     private static func isWordStart(_ s: String, _ index: String.Index) -> Bool {
         if index == s.startIndex { return true }

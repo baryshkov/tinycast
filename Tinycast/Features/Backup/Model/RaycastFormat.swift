@@ -4,11 +4,13 @@ enum RaycastImportError: LocalizedError {
     case notRaycastFile
     case incorrectPassphrase
     case corrupt
+    case tooLarge
 
     var errorDescription: String? {
         switch self {
         case .notRaycastFile: return "This doesn't look like a Raycast export (.rayconfig)."
         case .incorrectPassphrase: return "Incorrect passphrase, or the file is corrupted."
+        case .tooLarge: return "This export is too large to import."
         case .corrupt: return "The Raycast export could not be read."
         }
     }
@@ -27,9 +29,10 @@ struct RaycastImportOptions: OptionSet, Sendable {
     static let compactMode = RaycastImportOptions(rawValue: 1 << 7)
     static let snippets = RaycastImportOptions(rawValue: 1 << 8)
     static let aliases = RaycastImportOptions(rawValue: 1 << 9)
+    static let quicklinks = RaycastImportOptions(rawValue: 1 << 10)
     static let all: RaycastImportOptions = [
         .shortcuts, .favorites, .emojiSkinTone, .launchAtLogin, .menuBarVisibility, .clipboardHistory,
-        .popToRoot, .compactMode, .snippets, .aliases
+        .popToRoot, .compactMode, .snippets, .aliases, .quicklinks
     ]
 }
 
@@ -39,9 +42,11 @@ enum RaycastFormat: Sendable, Equatable {
     case v1
     /// Raycast X: gzip → JSON envelope → AES-256-GCM ciphertext under a scrypt key.
     case v2
+    case v3
 
     /// From the leading bytes alone, so a file is labelled before a passphrase is typed.
     static func detect(_ raw: Data) throws -> RaycastFormat {
+        if RaycastDecoder.isExport(raw) { return .v3 }
         let magic = [UInt8](raw.prefix(3))
         if magic.count == 3, magic[0] == 0x1f, magic[1] == 0x8b, magic[2] == 0x08 { return .v2 }
         // A v1 file is whole AES blocks: a 16-byte IV plus at least one block of ciphertext.
@@ -53,6 +58,7 @@ enum RaycastFormat: Sendable, Equatable {
         switch self {
         case .v1: return "Raycast 1.x export"
         case .v2: return "Raycast X export"
+        case .v3: return "Raycast RAYCFG3 export"
         }
     }
 
@@ -60,7 +66,7 @@ enum RaycastFormat: Sendable, Equatable {
     var supportedOptions: RaycastImportOptions {
         switch self {
         case .v1: return RaycastImportOptions.all.subtracting([.launchAtLogin, .aliases])
-        case .v2: return .all
+        case .v2, .v3: return .all
         }
     }
 }

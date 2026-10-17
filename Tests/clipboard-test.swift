@@ -7,7 +7,7 @@ struct ClipboardTests {
     static var failures = 0
     static var passes = 0
 
-    static func main() {
+    static func main() async {
         pinOrder()
         unpinRejoinsAsNewest()
         pasteLeavesPinsAlone()
@@ -18,6 +18,7 @@ struct ClipboardTests {
         typeFilterJoinsTheSearchMemo()
         persistence()
         migrationFromShippedDatabase()
+        await clearPreservesPinnedImages()
 
         print("\(passes)/\(passes + failures) passed")
         if failures > 0 { exit(1) }
@@ -238,8 +239,55 @@ struct ClipboardTests {
             expect(texts(reopened) == ["first", "third", "second"], "unpin after a reload")
 
             reopened.clearAll()
-            expect(reopened.items.isEmpty, "Clear History takes pins too")
+            expect(texts(reopened) == ["first"], "Clear History keeps pinned entries")
+            let afterClear = ClipboardStore(directory: dir)
+            afterClear.load()
+            expect(texts(afterClear) == ["first"], "only pinned entries remain on disk")
         }
+    }
+
+    static func clearPreservesPinnedImages() async {
+        let dir = scratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = ClipboardStore(directory: dir)
+        store.addImage(Data("pinned image".utf8), sourceBundleID: nil)
+        for _ in 0..<100 {
+            if !store.items.isEmpty { break }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        expect(!store.items.isEmpty, "the pinned test image is stored")
+        guard let pinned = store.items.first else { return }
+        store.togglePinned(pinned)
+        store.addImage(Data("temporary image".utf8), sourceBundleID: nil)
+        for _ in 0..<100 {
+            if store.items.count == 2 { break }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        expect(store.items.count == 2, "the unpinned test image is stored")
+        guard let unpinned = store.items.first, unpinned.id != pinned.id else { return }
+        let external = dir.appendingPathComponent("external.png")
+        try? Data("external image".utf8).write(to: external)
+        _ = store.importEntries([ClipboardItem(imagePath: external.path, sourceBundleID: nil)])
+        store.clearAll()
+        for _ in 0..<100 {
+            if !FileManager.default.fileExists(atPath: unpinned.imagePath ?? "") { break }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        expect(store.items.map(\.id) == [pinned.id], "clearing images keeps the pinned row")
+        expect(
+            FileManager.default.fileExists(atPath: pinned.imagePath ?? ""),
+            "clearing images preserves the pinned image file")
+        expect(
+            !FileManager.default.fileExists(atPath: unpinned.imagePath ?? ""),
+            "clearing images removes an unpinned owned image")
+        expect(
+            FileManager.default.fileExists(atPath: external.path),
+            "clearing imported images never deletes the external file")
+        let reopened = ClipboardStore(directory: dir)
+        reopened.load()
+        expect(reopened.items.map(\.id) == [pinned.id], "the pinned image survives a database reopen")
+        reopened.remove(reopened.items[0])
+        expect(reopened.items.isEmpty, "an individual delete still removes a pinned entry")
     }
 
     /// A shipped pre-pin database migrates in place. Failing to open one is not a soft failure: the store deletes and recreates a database it can't open, taking the history with it.
@@ -293,6 +341,7 @@ struct ClipboardTests {
         sqlite(
             url,
             """
+            PRAGMA trusted_schema=ON;
             CREATE TABLE items(
               id TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, text TEXT, image_path TEXT,
               created_at REAL NOT NULL, source_app TEXT

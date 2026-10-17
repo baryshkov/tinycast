@@ -1,5 +1,33 @@
 # Tinycast
 
+## Sequoia fork
+
+This fork's `sequoia-support` branch starts at the published `v0.9.7-sequoia` tag. Keep that
+working macOS 15 base and backport individual upstream fixes and features, with tests after each
+batch. Do not merge upstream `main` wholesale or run `compat/release.sh`: that script merges
+main and publishes tags, which is not this fork's workflow. The historical `macos15-compat`
+skill describes that superseded release workflow too.
+
+The macOS 15 requirement overrides the latest-only posture below. Keep the existing
+`compat/macos15.patch` applied only in an exported build tree, and verify that it still applies
+after each backport. Build with Xcode 26, not the installed Xcode 16 Command Line Tools. See
+[compat/README.md](compat/README.md) for the baseline, build steps and backport record.
+
+Development uses `Tinycast Dev.app` / `com.tinycast.app.dev`, with `compat/build-dev.sh` and
+separate data. Keep Dev's login item, Hyper Key and global shortcuts disabled unless requested.
+On 2026-10-17 the user explicitly authorized promoting this fork to the primary app and moving the
+official 0.9.7 into `~/Applications/backup`. Build that primary channel with
+`bash compat/build-dev.sh --release`; it uses `com.tinycast.app` and the existing primary data.
+Before promotion, stop the old app and back up its bundle, application support and preferences.
+Never reuse primary data for development or overwrite the preserved official recovery copy.
+
+Excluded from this fork: AI chat/Quick AI, MCP, Calendar/meetings, and the in-app updater.
+Do not import those modules or add dormant UI/settings for them as dependencies of another port.
+Priority order: File Search; launcher/search; window management (sizes/layouts/Rooms); full backup
+and Raycast import; Settings search/interface size/settings.json; system actions; window switcher;
+standalone camera. Preserve upstream implementations and tests where possible, adapting only the
+integration, excluded-feature references and macOS availability.
+
 A native macOS menu-bar launcher — a minimal Raycast: fuzzy app launcher, global and per-app hotkeys, a
 text/image clipboard history, an inline calculator, a floating note, snippets, quicklinks, window
 management and an emoji picker. It also **runs Raycast extensions** natively, in JavaScriptCore.

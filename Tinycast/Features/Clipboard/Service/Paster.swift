@@ -90,8 +90,9 @@ enum Paster {
 
     /// Whether anything was written; a vanished item leaves the pasteboard untouched.
     @MainActor @discardableResult
-    private static func write(_ item: ClipboardItem, store: ClipboardStore) -> Bool {
-        let pb = NSPasteboard.general
+    static func write(
+        _ item: ClipboardItem, store: ClipboardStore, to pb: NSPasteboard = .general
+    ) -> Bool {
         switch item.kind {
         case .text:
             guard let text = item.text else { return false }
@@ -103,8 +104,9 @@ enum Paster {
                 return false
             }
             pb.clearContents()
-            pb.declareTypes([.png, ClipboardManager.internalType], owner: nil)
+            pb.declareTypes([.png, .fileURL, ClipboardManager.internalType], owner: nil)
             pb.setData(data, forType: .png)
+            pb.setData(url.dataRepresentation, forType: .fileURL)
         }
         pb.setData(Data(), forType: ClipboardManager.internalType)
         // The poller skips marked writes, so this is the only promotion point.

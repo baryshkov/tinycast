@@ -1,4 +1,100 @@
+# Current fork status
+
+See [PORTS.md](PORTS.md) for the selected module ports, integration differences and verification.
+Development uses the isolated Dev channel. On 2026-10-17 the user requested promoting this fork
+to the primary app and preserving official 0.9.7 in `~/Applications/backup`.
+
+`bash compat/build-dev.sh --release` builds version `0.9.7-sequoia.1` into
+`build/sequoia-primary/Build/Products/Release/Tinycast.app`, using the stable bundle identifier
+and existing primary data. It applies the compatibility patch and checks the macOS 15 floor,
+weak glass imports and signature. It does not install or launch the result. Before installation,
+stop the previous app and preserve its bundle, application support and exported preferences.
+The ad-hoc signature differs from the official build, so macOS may require Accessibility again.
+Earlier notes below describe the initial development isolation, before this explicit promotion.
+
 # macOS 15 (Sequoia) channel
+
+## This fork: incremental backports
+
+The user excludes AI/Quick AI, MCP, Calendar/meetings and the in-app updater entirely.
+The selected priority order is: File Search, launcher/search, window management, full backup and
+Raycast import, Settings, system actions, window switcher, standalone camera. Port coherent upstream
+modules with their tests; retain their code unchanged where possible and adapt the integration
+and Sequoia-specific API calls. Do not pull excluded modules in to satisfy shared settings or wiring.
+
+`sequoia-support` starts at the last published Sequoia release, `v0.9.7-sequoia`
+(`df8b50f170fb9469682609969bac913d6e7d2f91`). The official DMG was checksum-verified, installed
+and opened on macOS 15.8.1 arm64: onboarding and launcher search work. This does not validate
+an app built from this branch or the backports below.
+
+Backport individual changes from upstream; do not merge current `main` wholesale. The historical
+`compat/release.sh` and `macos15-compat` skill below perform full merges and publishing, so do not
+use them for this workflow. The later `v0.10.20-sequoia` tag has no published release and its tree
+does not contain the compatibility patch; it is not the working baseline.
+
+Keep source edits on this branch and the existing material fallback in `compat/macos15.patch`.
+The source tree intentionally retains its upstream macOS 26 target; build an exported copy with
+the patch applied and `MACOSX_DEPLOYMENT_TARGET=15.0`. Xcode 26.3 is installed at
+`/Applications/Xcode.app` and runs on Sequoia 15.6+. Use it per command; changing the system-wide
+developer directory is unnecessary.
+
+For each batch, run the affected harnesses and `git apply --check compat/macos15.patch`, then
+`bash compat/build-dev.sh --test` for the full suite, Debug build and binary checks. Tests run
+against the patched export with Xcode's SDK explicitly selected. Run lint with the same Xcode.
+The historical `compat/verify.sh` builds the Release channel and is not the local Dev entry point.
+
+### Working app and Dev app
+
+The official `~/Applications/Tinycast.app` stays the user's primary working version, 0.9.7.
+Keep its bundle, preferences, data, permissions and running process untouched.
+
+Run `bash compat/build-dev.sh` to build the fork in a temporary patched export with Xcode 26.3.
+The output is `build/sequoia-dev/Build/Products/Debug/Tinycast Dev.app`, bundle identifier
+`com.tinycast.app.dev`. It uses separate preferences, data folders, permissions and login item.
+The script validates the bundle identity, macOS 15 floor and signature, and never installs or
+opens the app. It includes current tracked edits and untracked app/project/test files. Pass `--test`
+to run all harnesses before building. Both the launcher executable and Debug library are checked
+for the macOS 15 floor and required Liquid Glass imports.
+
+Only install Dev as `~/Applications/Tinycast Dev.app`. Do not enable login, Hyper Key or global
+shortcuts for Dev while testing alongside the primary app. The local build uses ad-hoc signing;
+Accessibility permissions may need to be granted again after a rebuild.
+
+| Upstream change | Backport |
+| --- | --- |
+| `5ec0f9de` / #1482 | Follow directory symlinks in application scopes; preserve logical paths, depth limits and cycle handling. Embedded-app scanning and version sorting are separate changes and are not included. |
+| `40087b78` / #966 | Clear unpinned clipboard history while retaining pinned text, images and their files. |
+| `848c2d6d` / #1602 | Include the stored PNG's file URL when copying an image, for terminal receivers. |
+| `47051801` / #1267 | Add Force Quit Application to running-app menus and bind it to Control-Option-Shift-Q. |
+
+The directory-link regression cases fail against the original source and pass with the backport.
+Two local build/test adaptations are also included: the palette body uses intermediate view
+values so Swift 6.2.4 can typecheck it, and the legacy clipboard fixture explicitly enables
+`trusted_schema` in its temporary SQLite connection so its FTS triggers can seed the old database.
+The latter changes no application database or runtime setting.
+
+Validation on macOS 15.8.1 with Xcode 26.3 (Swift 6.2.4, SDK 26.2):
+
+- All 37 harnesses pass, including 28 scope checks, 71 clipboard checks, a private-pasteboard
+  image test and a real force-quit test against a disposable app that refuses normal termination.
+- The signed arm64 Debug app builds with a macOS 15.0 floor and weak Liquid Glass imports.
+- SwiftLint 0.65.1 reports no errors; pre-existing warnings remain. For an explicit toolchain,
+  set `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` and
+  `DYLD_FRAMEWORK_PATH=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib`.
+- Compatibility patch application, model import boundaries and `git diff --check` pass.
+- The installed Dev app passed onboarding, search, arrow navigation, the actions menu,
+  inline calculation, Clipboard mode and Settings. Accessibility-dependent pasting and external
+  extensions were not manually exercised. Login, Hyper Key and global shortcuts remain disabled.
+- The second batch's Force Quit row is visible for a running app and absent for a stopped app;
+  Clipboard settings explicitly say pinned entries are kept. No user app was force-quit. The
+  terminal image change is verified at the pasteboard-format boundary, not through Accessibility
+  keystroke delivery to a terminal.
+- Dev was stopped after the smoke check. The original 0.9.7 remains running, with its executable
+  and Info.plist checksums unchanged.
+
+## Historical upstream workflow
+
+The rest of this document describes the original patch-based release channel, for reference.
 
 Tinycast's `main` targets macOS 26 and uses Liquid Glass. This branch (`compat/macos15`) ships the
 same app to macOS 15 **without changing a single file on `main`**.
@@ -135,10 +231,10 @@ hard-errors if `Casks/<cask>.rb` doesn't already exist. Repeat for `tinycast@bet
 ever want a Sequoia beta channel — it does not exist yet, so a `-beta.N-sequoia` tag would fail at
 the cask step.
 
-## Not verified
+## Historical release checklist
 
-The build is proven to compile, link and declare a macOS 15 floor. **Nothing here has been run on
-real macOS 15.** Before publishing, on a Sequoia machine confirm: the fallback material reads as a
+The original upstream checklist below predates this fork. Dev has been built and launched on this
+Sequoia machine in earlier batches; each new module still needs its own runtime smoke test. Before publishing, on a Sequoia machine confirm: the fallback material reads as a
 floating control rather than a flat box; the Accessibility prompt and paste-to-`previousApp` focus
 restoration work; the Hyper Key `hidutil` caps remap works; emoji grid and clipboard image
 thumbnails render. The `onScrollGeometryChange`-driven edge dissolve and thin scrollbar are the
