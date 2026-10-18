@@ -5,7 +5,7 @@ struct QuickLookSurface: NSViewRepresentable {
     let url: URL
 
     func makeNSView(context: Context) -> QLPreviewView {
-        let view = QLPreviewView(frame: .zero, style: .normal) ?? QLPreviewView()
+        let view = PreviewQuickLookView(frame: .zero, style: .normal) ?? PreviewQuickLookView()
         // Arrow-keying a list must not start a movie, and the panel outlives any one preview.
         view.autostarts = false
         view.shouldCloseWithWindow = false
@@ -22,3 +22,6 @@ struct QuickLookSurface: NSViewRepresentable {
         view.close()
     }
 }
+
+/// Markdown and other Quick Look plug-ins must leave typing and navigation with the search field.
+private final class PreviewQuickLookView: QLPreviewView, KeyboardFocusRefusing {}

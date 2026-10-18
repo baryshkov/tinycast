@@ -83,6 +83,9 @@ run clipboard-pasteboard-test Tinycast/Features/Clipboard/Model/ClipboardStore.s
 run emoji-test             Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift \
                            Tinycast/Features/Emoji/Model/EmojiData.generated.swift
+run palette-keyboard-test Tinycast/Palette/PalettePanel.swift \
+                          Tinycast/DesignSystem/Interaction/KeyboardFocus.swift \
+                          Tinycast/Platform/NotificationToken.swift
 run palette-selection-test Tinycast/Features/PaletteRowIndex.swift \
                            Tinycast/Features/Emoji/Model/EmojiGridGeometry.swift
 run appearance-test        Tinycast/Platform/Appearance.swift \

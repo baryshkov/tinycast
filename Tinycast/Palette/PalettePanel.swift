@@ -27,6 +27,7 @@ final class PalettePanel: NSPanel {
     private var compositionObserver: NotificationToken?
 
     override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+        if let view = responder as? NSView, view.refusesKeyboardFocus { return false }
         guard super.makeFirstResponder(responder) else { return false }
         trackComposition()
         if let context = fieldEditorContext { onFieldEditorFocused?(context) }
@@ -139,6 +140,29 @@ final class PalettePanel: NSPanel {
         if event.type == .keyDown, let arrow = Self.emacsArrow(for: event) {
             sendEvent(arrow)
             return
+        }
+        // Preview plug-ins can otherwise eat navigation before SwiftUI sees it. Keep IME editing
+        // untouched; only unmodified arrows and Tab/Shift-Tab belong to the result list.
+        if event.type == .keyDown, paletteState?.isComposing != true {
+            let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+            let code = Int(event.keyCode)
+            if let navigate = paletteState?.onNavigate {
+                if code == kVK_Tab, modifiers.isEmpty || modifiers == .shift {
+                    navigate(modifiers == .shift ? -1 : 1)
+                    return
+                }
+                if modifiers.isEmpty, code == kVK_DownArrow || code == kVK_UpArrow {
+                    navigate(code == kVK_DownArrow ? 1 : -1)
+                    return
+                }
+            }
+            if modifiers == .command,
+                let index = [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3].firstIndex(of: code),
+                let activate = paletteState?.onResultSlot
+            {
+                if !event.isARepeat { activate(index) }
+                return
+            }
         }
         // A footer menu owns the keyboard. See docs/features/palette.md#menu-open-input-freeze.
         if event.type == .keyDown,

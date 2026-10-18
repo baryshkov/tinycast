@@ -27,6 +27,8 @@ double-click or Return opens; Command-Return reveals in Finder. Copy Path is in 
 
 Preview implementations are upstream's QuickLook, PDF, text and media surfaces. The stage unmounts
 when the palette hides, which releases decoders and pauses playback.
+Preview subtrees refuse keyboard focus. The panel routes list navigation before the preview's
+responder chain, including Markdown Quick Look plug-ins that previously stopped arrow navigation.
 
 ## Verification
 

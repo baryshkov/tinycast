@@ -62,3 +62,15 @@ No camera, Accessibility or Full Disk Access grant was accepted. Real camera cap
 indexing and moving/switching other apps' windows remain unverified. An earlier Dev process exited
 during automation without a crash report; this was not reproduced after relaunch and rebuild.
 The original stable Info.plist and executable still match their recorded SHA-256 hashes.
+
+## Keyboard corrections on 2026-10-18
+
+Primary version 0.9.7-sequoia.2 keeps the display name Tinycast. Tab/Shift-Tab navigate results;
+Command-1/2/3 immediately activate visible result slots, reserving them from favorites. The panel
+handles list keys before embedded preview responders and rejects focus requests from marked
+Quick Look/PDF/media subtrees. Rooms layout cycling remains available under Actions → Next Layout.
+The AppKit keyboard regression harness and 111,684 selection cases passed, as did the Release build,
+macOS 15 binary checks, code-signature verification and lint of changed code. Installed-UI checks
+confirmed Tab/Shift-Tab and Command-1; file-preview verification requires the primary app's disk grant.
+System Settings still held an Accessibility entry named Tinycast 0.9.7 after the original app moved
+to backup. That stale entry was removed; adding the current bundle requires explicit user approval.

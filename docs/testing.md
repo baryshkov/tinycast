@@ -64,6 +64,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `clipboard-pasteboard-test` | Real `Paster` and `ClipboardStore` with a private pasteboard: PNG plus file URL, vanished files, text and own-write markers |
 | `emoji-test` | `Emoji/Model/EmojiCatalog.swift`, `EmojiGridGeometry.swift`, the generated data |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
+| `palette-keyboard-test` | Real `PalettePanel` event routing and first-responder refusal: Tab/Shift-Tab, arrows, Control-N/P, Command-1/2/3, repeat suppression and preview descendants |
 | `palette-placement-test` | `DesignSystem/Theme.swift`, `Palette/PalettePlacement.swift` |
 | `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `HyperKey.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
 | `callout-test` | `DesignSystem/Theme.swift`, `HotKeys/UI/CalloutPlacement.swift` |

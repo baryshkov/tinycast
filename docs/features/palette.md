@@ -71,10 +71,17 @@ palette indexes into it. Adding a mode means adding a conformer, not a branch in
 | `.quicklinkArguments` | `QuicklinkArgumentsScreen` | `QuicklinkArgumentsView` (see [quicklinks.md](quicklinks.md#the-argument-prompt)) |
 | `.extensionCommand` | `ExtensionCommandScreen` | `ExtensionCommandView` (see [extensions.md](extensions.md)) |
 
-Every mode but `.launcher` is a sub-screen that backs out to the launcher. **Tab cycles launcher ↔
-clipboard and nothing else** unless the selected row declares arguments, in which case it walks those
-fields first (see below); the rest are reached by a command or a global hotkey, and Uninstall only
-from a launcher app's Actions menu, scoped to that app.
+Every mode but `.launcher` is a sub-screen that backs out to the launcher. On this fork, **Tab moves
+to the next result and Shift-Tab to the previous result**; an open menu receives those steps instead.
+Clipboard History is reached by its command or global hotkey. Inline argument fields can be clicked.
+Command-1 through Command-3 immediately activate the first three visible results, including the
+calculator row when present; a missing slot does nothing and never falls back to a favorite.
+These keys work in the compact bar too, expanding it before activation. Remaining Command digits
+retain their favorite bindings. Uninstall is reached from a launcher app's Actions menu.
+
+The panel routes navigation before its first responder, so an embedded Quick Look/text view cannot
+consume the list's keys. Preview views mark their subtree with `KeyboardFocusRefusing`, and the panel
+rejects their first-responder requests without disturbing the search field or IME composition.
 
 The argument screen is the one mode where the search field is not a search field: it _is_ the current
 argument's input, so its placeholder names that argument and ↵ submits rather than activating a row.

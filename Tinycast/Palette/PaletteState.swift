@@ -45,6 +45,9 @@ final class PaletteState {
     @ObservationIgnored var menuOpen = false { didSet { onMenuOpenChanged?(menuOpen) } }
     /// Fired when `menuOpen` flips, so the panel can hide the caret without a focus swap.
     @ObservationIgnored var onMenuOpenChanged: ((Bool) -> Void)?
+    /// Mounted by the root view; AppKit routes list keys before embedded previews can consume them.
+    @ObservationIgnored var onNavigate: ((Int) -> Void)?
+    @ObservationIgnored var onResultSlot: ((Int) -> Void)?
 
     func prepare(mode: PaletteMode) {
         backStack.removeAll()

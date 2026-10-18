@@ -268,18 +268,27 @@ struct RootPaletteView: View {
         .onChange(of: openMenu) {
             vm.menuOpen = menuOpen
         }
-        .onAppear { searchFocused = true }
+        .onAppear {
+            searchFocused = true
+            vm.onNavigate = navigateResults
+            vm.onResultSlot = activateResultSlot
+        }
+        .onDisappear {
+            vm.onNavigate = nil
+            vm.onResultSlot = nil
+        }
         // Several paths flip `paletteIsCollapsed`, so resize the window to match.
         .onChange(of: core.paletteCoordinator.paletteIsCollapsed) {
             core.paletteCoordinator.syncPaletteSize()
         }
 
         return observed
-        // ⌘1–⌘9/⌘0 launch favorites by position, in both palette sizes.
+        // ⌘1–⌘3 belong to visible results; remaining digits retain favorite shortcuts.
         .onKeyPress(keys: Self.favoriteSlotKeys, phases: .down) { press in
             guard press.modifiers.contains(.command),
                 !isCollapsed || settings.showFavoritesInCompactMode,
                 let index = FavoriteSlots.index(for: press.key.character),
+                index >= 3,
                 let launcher = screen as? LauncherScreen
             else { return .ignored }
             return launcher.launchFavorite(at: index) ? .handled : .ignored
@@ -348,10 +357,8 @@ struct RootPaletteView: View {
             return .handled
         }
         .onChange(of: settings.interfaceSize) { core.paletteCoordinator.syncPaletteSize() }
-        .onKeyPress(.tab) {
-            if !menuOpen, let rooms = screen as? RoomsScreen { return rooms.tab(at: sel, backwards: false) ? .handled : .ignored }
-            if !menuOpen, let rooms = screen as? RoomsScreen { return rooms.tab(at: sel, backwards: false) ? .handled : .ignored }
-            if !menuOpen { advanceTabFocus() }
+        .onKeyPress(keys: [.tab], phases: [.down, .repeat]) { press in
+            navigateResults(press.modifiers.contains(.shift) ? -1 : 1)
             return .handled
         }
         .modifier(
@@ -749,17 +756,26 @@ struct RootPaletteView: View {
         }
     }
 
-    /// Tab flips launcher↔clipboard; Calculator History exits rather than joining.
-    private func toggleMode() {
-        vm.mode = vm.mode == .launcher ? .clipboard : .launcher
+    /// Panel-level routing survives Quick Look changing its responder subtree during a preview swap.
+    private func navigateResults(_ delta: Int) {
+        if menuOpen {
+            moveMenu(delta)
+        } else if isCollapsed {
+            vm.selection = 0
+            core.paletteCoordinator.expandFromCompact()
+        } else {
+            moveVertically(delta)
+        }
     }
 
-    /// Tab walks the inline argument fields first — search field → each argument → back — and only
-    /// toggles the mode when the selection declares none.
-    private func advanceTabFocus() {
-        guard let accessory = headerAccessory else { return toggleMode() }
-        argumentFocused = accessory.fieldAfter(argumentFocused)
-        searchFocused = argumentFocused == nil
+    private func activateResultSlot(_ index: Int) {
+        guard !menuOpen, screen.rows.indices.contains(index) else { return }
+        if isCollapsed { core.paletteCoordinator.expandFromCompact() }
+        argumentFocused = nil
+        searchFocused = true
+        vm.selection = index
+        scroll = ScrollIntent(kind: .follow)
+        activateSelection()
     }
 
     /// Back out to a fresh root search, the same reset `prepare` does on show.
@@ -887,7 +903,7 @@ private struct CompactFavoritesRow: View {
     }
 
     private func help(for app: AppEntry, at index: Int) -> String {
-        guard let digit = FavoriteSlots.digit(at: index) else { return app.name }
+        guard index >= 3, let digit = FavoriteSlots.digit(at: index) else { return app.name }
         return "\(app.name)  ⌘\(digit)"
     }
 }

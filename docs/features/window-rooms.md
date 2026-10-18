@@ -6,7 +6,7 @@ gap, and steps everything else back — apps with nothing in the room hide, and 
 the room's apps park just off-screen. Nothing is ever closed.
 
 The palette's **Switch Room** screen lists the rooms; the selected one is previewed over a blurred
-desk, and **Tab** tries its next layout while the cards glide there. Rooms ride on Window
+desk. **⌘K → Next Layout** tries another arrangement while the cards glide there. Rooms ride on Window
 Management's switch, its Accessibility grant and its `windowGap`, and add no dependency.
 
 Adapted from [Rooms](https://github.com/saragordic/rooms) by Sara Gordić, with her permission and
@@ -95,12 +95,10 @@ the room, at most twice — minimums only grow, so the loop ends.
 entered comes first, so the room you just left is one row away. Typing a new name offers
 **Create Room “…”**, and an existing room's name offers **Choose Windows**.
 
-- **↵** enters the selected room. **⇥ / ⇧⇥** step through `RoomPlan.layoutChoices` — the layouts
-  that fit its open windows here, each drawn differently; Stack only when nothing tidier fits — and
-  store the choice for this display. A single choice says so in a message.
+- **↵** enters the selected room. **⇥ / ⇧⇥** move down/up the result list, like every other palette
+  screen. **⌘K → Next Layout** steps through `RoomPlan.layoutChoices` and stores the display's choice.
 - **⌘K** holds Enter Room, Next Layout, Remember Arrangement, Choose Windows… and Delete Room (**⌃X**, confirmed through `DialogController`). **⌘N** creates a room.
-- The screen claims ⇥ through `PaletteScreen.tab(at:backwards:)`, asked before `tabTarget` and the
-  palette's ring; every other screen keeps today's Tab.
+- The upstream `tab(at:backwards:)` helper is retained, but this fork reserves Tab for list navigation.
 
 `PaletteMode.roomWindows` is the picker, opened from a name typed on the Rooms screen (Create Room
 with no name opens that screen first), so the search field filters. The windows you can see come
