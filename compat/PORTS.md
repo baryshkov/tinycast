@@ -71,6 +71,14 @@ handles list keys before embedded preview responders and rejects focus requests 
 Quick Look/PDF/media subtrees. Rooms layout cycling remains available under Actions → Next Layout.
 The AppKit keyboard regression harness and 111,684 selection cases passed, as did the Release build,
 macOS 15 binary checks, code-signature verification and lint of changed code. Installed-UI checks
-confirmed Tab/Shift-Tab and Command-1; file-preview verification requires the primary app's disk grant.
+confirmed Tab/Shift-Tab and Command-1.
 System Settings still held an Accessibility entry named Tinycast 0.9.7 after the original app moved
-to backup. That stale entry was removed; adding the current bundle requires explicit user approval.
+to backup. That stale entry was removed and the user explicitly approved both Accessibility and Full
+Disk Access, completing the macOS authentication themselves. The running primary app now reports
+Accessibility Granted and searches its file index. System Settings may still label the working entry
+Tinycast 0.9.7; the app's effective access was checked rather than inferred from that cached label.
+
+Four disposable Markdown files exercised the installed Obsidian Quick Look plug-in. Tab selected
+file 02, Down selected 03, Shift-Tab returned to 02; clicking the Markdown preview and pressing Tab
+still selected 03. Control-N/P moved to 04 and back to 03. Every observation kept the search text
+field focused. The fixtures were removed after testing. No preview-focus failure was reproduced.
