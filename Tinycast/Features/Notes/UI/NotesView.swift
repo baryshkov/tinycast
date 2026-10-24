@@ -2,6 +2,9 @@ import SwiftUI
 
 struct NotesView: View {
     @Environment(NotesCoordinator.self) private var notes
+    @State private var renamingID: NoteID?
+    @State private var titleDraft = ""
+    @FocusState private var titleFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,6 +17,10 @@ struct NotesView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // The band above is the title bar; AppKit must not inset the content a second time.
         .ignoresSafeArea()
+        .onChange(of: notes.editorInput.id) { _, _ in cancelRename() }
+        .onChange(of: titleFocused) { _, focused in
+            if !focused { commitRename() }
+        }
     }
 
     /// The hosting view hides the real title bar, so this band drags the window itself.
@@ -28,13 +35,50 @@ struct NotesView: View {
         .overlay { title }
     }
 
+    @ViewBuilder
     private var title: some View {
-        Text(notes.activeTitle)
-            .font(Theme.Typography.noteTitle)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .padding(.horizontal, Theme.Size.noteTitleInset)
-            .allowsHitTesting(false)
+        if renamingID != nil {
+            TextField("Note title", text: $titleDraft)
+                .textFieldStyle(.plain)
+                .font(Theme.Typography.noteTitle)
+                .multilineTextAlignment(.center)
+                .focused($titleFocused)
+                .onSubmit(commitRename)
+                .onExitCommand(perform: cancelRename)
+                .onAppear { titleFocused = true }
+                .accessibilityLabel("Note title")
+                .help("Enter to save, Escape to cancel")
+                .padding(.horizontal, Theme.Size.noteTitleInset)
+        } else {
+            Text(notes.activeTitle)
+                .font(Theme.Typography.noteTitle)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2, perform: beginRename)
+                .accessibilityAction(named: Text("Rename note"), beginRename)
+                .help("Double-click to rename")
+                .padding(.horizontal, Theme.Size.noteTitleInset)
+        }
+    }
+
+    private func beginRename() {
+        guard notes.hasActiveNote else { return }
+        titleDraft = notes.activeTitle
+        renamingID = notes.editorInput.id
+    }
+
+    private func commitRename() {
+        guard let id = renamingID else { return }
+        let title = titleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        cancelRename()
+        guard !title.isEmpty, id == notes.editorInput.id, title != notes.activeTitle else { return }
+        notes.rename(id, to: title)
+    }
+
+    private func cancelRename() {
+        renamingID = nil
+        titleFocused = false
     }
 
     @ViewBuilder

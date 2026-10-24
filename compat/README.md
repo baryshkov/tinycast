@@ -4,7 +4,7 @@ See [PORTS.md](PORTS.md) for the selected module ports, integration differences 
 Development uses the isolated Dev channel. On 2026-10-17 the user requested promoting this fork
 to the primary app and preserving official 0.9.7 in `~/Applications/backup`.
 
-`bash compat/build-dev.sh --release` builds version `0.9.7-sequoia.1` into
+`bash compat/build-dev.sh --release` builds the current primary fork version into
 `build/sequoia-primary/Build/Products/Release/Tinycast.app`, using the stable bundle identifier
 and existing primary data. It applies the compatibility patch and checks the macOS 15 floor,
 weak glass imports and signature. It does not install or launch the result. Before installation,

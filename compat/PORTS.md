@@ -82,3 +82,12 @@ Four disposable Markdown files exercised the installed Obsidian Quick Look plug-
 file 02, Down selected 03, Shift-Tab returned to 02; clicking the Markdown preview and pressing Tab
 still selected 03. Control-N/P moved to 04 and back to 03. Every observation kept the search text
 field focused. The fixtures were removed after testing. No preview-focus failure was reproduced.
+
+## Editable note titles on 2026-10-24
+
+Version 0.9.7-sequoia.3 adds inline title renaming on double-click. Enter and moving focus to the
+editor save through the existing Notes rename operation; Escape cancels, blank names are ignored,
+and switching documents cancels the title draft. The Notes persistence tests, lint, and Dev build
+passed. In the isolated Dev app, double-click, Enter, Escape and click-away were verified; the
+renamed Markdown file retained its complete body on disk. The disposable test note was removed
+and Dev Notes enablement restored afterward.

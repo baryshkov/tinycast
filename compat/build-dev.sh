@@ -15,7 +15,7 @@ case "${1:-}" in
         PRODUCT_NAME=Tinycast
         EXPECTED_BUNDLE_ID=com.tinycast.app
         BUILD_CHANNEL=sequoia-primary
-        VERSION=0.9.7-sequoia.2
+        VERSION=0.9.7-sequoia.3
         ;;
     *) echo "Usage: bash compat/build-dev.sh [--test | --release]" >&2; exit 64 ;;
 esac
@@ -52,7 +52,7 @@ fi
 xcodebuild -project "$STAGE/Tinycast.xcodeproj" -scheme Tinycast \
     -configuration "$CONFIGURATION" -derivedDataPath "$ROOT/build/$BUILD_CHANNEL" \
     MACOSX_DEPLOYMENT_TARGET=15.0 ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
-    CODE_SIGN_IDENTITY=- MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION=3 build
+    CODE_SIGN_IDENTITY=- MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION=4 build
 
 APP="$ROOT/build/$BUILD_CHANNEL/Build/Products/$CONFIGURATION/$PRODUCT_NAME.app"
 PLIST="$APP/Contents/Info.plist"

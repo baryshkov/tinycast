@@ -79,8 +79,10 @@ Both windows are one `NotesPanel`, a non-activating floating panel that owns the
 claims ⌘N, ⌘P, ⌘O and ⌘W, and the switcher reads ⌘N plus ⌘W and ⌘P as dismissals.
 
 AppKit draws the note window's chrome. Its 52-point title bar holds the traffic lights, the centred
-active title, and one frosted capsule of Create, Browse, and Open Folder. The title is drawn, not
-native, so it centres on the window; it is not hit-testable, so dragging it moves the window.
+active title, and one frosted capsule of Create, Browse, and Open Folder. Double-click the centred
+title to edit it inline. Enter or moving focus away saves through the normal rename operation;
+Escape cancels, and a blank title leaves the existing name unchanged. Switching notes cancels the
+edit so a draft cannot rename a different note. The remaining title-bar space still drags the window.
 
 The switcher is a borderless child window centred on its host and hung below the title bar, not an
 in-window screen — a note window may be 180pt tall, and the list must not be. It carries the same glass
