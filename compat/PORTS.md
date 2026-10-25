@@ -113,3 +113,10 @@ The primary app was then stopped normally and promoted to .4. Its .3 bundle is s
 preferences, application support, caches and settings.json. The preserved official .9.7 binary
 checksum is unchanged. Installed-primary activation also started a Clock timer (09:57 observed);
 that test timer was cancelled afterward.
+
+The Shortcut's input was subsequently restricted to Text, with Stop and Respond on missing input.
+The cleaned export was signed using Apple's shortcuts CLI and imported over the existing command.
+A no-input CLI run returned cancellation and left Clock idle. Two runs using the same text-file
+input as Tinycast started real ten-minute Clock timers, each cancelled after inspection. Shortcuts
+automatically restored a service output action during CLI execution; it is not a second timer.
+The installed primary app's `timer 10m` activation was checked too (09:43 observed), then cancelled.

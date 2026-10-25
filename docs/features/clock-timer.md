@@ -20,6 +20,9 @@ Import [Tinycast Timer.shortcut](../../compat/Tinycast%20Timer.shortcut) into Ap
 Keep its name **Tinycast Timer**. Its Clock **Start Timer** action takes **Shortcut Input** as
 the duration, with the unit set to **seconds**. The exported shortcut was created with the
 native Shortcuts editor on macOS Sequoia; it can also be recreated with those settings.
+Accept only **Text** as input and set missing-input behavior to **Stop and Respond**.
+The export contains only Start Timer; the system CLI may add its own Stop and Output action
+when running it. This is normal Shortcuts behavior and does not broaden the accepted input.
 
 The local machine already has this Shortcut installed. A missing or failing Shortcut reports an
 error through Tinycast's existing notice surface. Clock uses its own default timer sound; Tinycast
