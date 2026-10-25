@@ -38,6 +38,7 @@
 		0FCFCEA4477672D62A3295ED /* BackupApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7FCA9FA81B1CF8B8C37E48A /* BackupApplier.swift */; };
 		0FD2528627DE63DC9C6B8793 /* EntryNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = B07F172974DA662EBE25422E /* EntryNaming.swift */; };
 		106AF34CEAEB08CBCC924118 /* VolumeLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 273827EB5CC04F1951C40387 /* VolumeLevel.swift */; };
+		109922093FBA1163F51F3DA7 /* ClockTimerRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41996F08FCEE8E411CB49A97 /* ClockTimerRequest.swift */; };
 		109E27ACDAADDA42FE33E119 /* SettingsNavigationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364BEC0805A8F5C39444EAF5 /* SettingsNavigationState.swift */; };
 		11C3F9D5C786EF1D11787E0C /* CustomCommandCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE41DC04958D7C2FF8C47F62 /* CustomCommandCoordinator.swift */; };
 		11EF7061ED64616FFB13423F /* SettingsHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C504229760FFFFA9D8A7799 /* SettingsHistory.swift */; };
@@ -145,6 +146,7 @@
 		50A3CB2A348F8E03D467B169 /* ExtensionRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54C4540AD6F188A2455473F /* ExtensionRuntime.swift */; };
 		50A47E9D88A34A1D5C910CE5 /* RoomPickerList.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD693A155FCBDA6315C59330 /* RoomPickerList.swift */; };
 		50A706F0B06A2AF3B1AB7505 /* WindowLayoutArgumentField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 978DA4527C5B96C98BD33899 /* WindowLayoutArgumentField.swift */; };
+		50E2799647B83B556219637A /* ClockTimerRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500DEFA8331F0259910A2C7 /* ClockTimerRunner.swift */; };
 		5194FB6B47E004217CFD1ABB /* UninstallSearchRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E54932083F6BC197453EA0C8 /* UninstallSearchRoot.swift */; };
 		51C51CD483B35ABAA476D1C8 /* ScriptRomanization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8358E65DAC02F974829288B /* ScriptRomanization.swift */; };
 		52C4F57BB26F420CCD22C1D7 /* PaletteWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209D951FDD587A040F1F76F3 /* PaletteWindowController.swift */; };
@@ -573,6 +575,7 @@
 		410684C9DEB3754962C20C9C /* ExtensionStoreClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionStoreClient.swift; sourceTree = "<group>"; };
 		418527DD2F2370A1B82A13B7 /* PaletteDropGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteDropGuideView.swift; sourceTree = "<group>"; };
 		418DA899A1546F3B4AC44777 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
+		41996F08FCEE8E411CB49A97 /* ClockTimerRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockTimerRequest.swift; sourceTree = "<group>"; };
 		4395BACF833C810961A248F0 /* BarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarButton.swift; sourceTree = "<group>"; };
 		43F0E8530B618C2613BDD0C2 /* SettingsFileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsFileRepository.swift; sourceTree = "<group>"; };
 		43F3BC11AD77D8A58671F83E /* HotKeyAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyAction.swift; sourceTree = "<group>"; };
@@ -739,6 +742,7 @@
 		A17C22B5CE1449E12331FA94 /* WindowLayoutEditorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayoutEditorPanel.swift; sourceTree = "<group>"; };
 		A4942C19E48EF6DECD2D303D /* FileSearchMediaPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSearchMediaPlayer.swift; sourceTree = "<group>"; };
 		A4B1949D20DAEA3F80649D17 /* WindowCycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCycle.swift; sourceTree = "<group>"; };
+		A500DEFA8331F0259910A2C7 /* ClockTimerRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockTimerRunner.swift; sourceTree = "<group>"; };
 		A5873BB8728FD8BC5D256A21 /* CameraCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCoordinator.swift; sourceTree = "<group>"; };
 		A5A8F78D3F1BFA8E86F9CB47 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		A5DFA4E0FDAC12379F2D38B5 /* CalloutPlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalloutPlacement.swift; sourceTree = "<group>"; };
@@ -1312,6 +1316,14 @@
 			path = Quicklinks;
 			sourceTree = "<group>";
 		};
+		6C86C8E1F2E48B384C3BED48 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				41996F08FCEE8E411CB49A97 /* ClockTimerRequest.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
 		6D9D85B5CE38DEAF33B64137 /* About */ = {
 			isa = PBXGroup;
 			children = (
@@ -1504,6 +1516,14 @@
 			path = Panes;
 			sourceTree = "<group>";
 		};
+		89E744DC6B5153FE4F220F3B /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				A500DEFA8331F0259910A2C7 /* ClockTimerRunner.swift */,
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
 		8A16DA3DB6733A27E0DF4059 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
@@ -1582,6 +1602,7 @@
 				356F452DB0F8F9834817455B /* Calculator */,
 				A4EEB152B6277E473ED70808 /* Camera */,
 				005F026A8F7D5E209B1CE917 /* Clipboard */,
+				A7AE1760043338C836DA5ECD /* ClockTimer */,
 				486F4CE5090E1ABA5AC16451 /* CustomCommands */,
 				15CFCD6B1429C5F0944CBCC4 /* Emoji */,
 				8A16DA3DB6733A27E0DF4059 /* Extensions */,
@@ -1752,6 +1773,15 @@
 				F58E564E6181EB15497E51CD /* SnippetTemplateEngine.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		A7AE1760043338C836DA5ECD /* ClockTimer */ = {
+			isa = PBXGroup;
+			children = (
+				6C86C8E1F2E48B384C3BED48 /* Model */,
+				89E744DC6B5153FE4F220F3B /* Service */,
+			);
+			path = ClockTimer;
 			sourceTree = "<group>";
 		};
 		A8F2E59B977761D9E9DDC250 /* Service */ = {
@@ -2275,6 +2305,8 @@
 				D4A45373662D6658706E4DA4 /* ClipboardSettingsView.swift in Sources */,
 				3155DE3A2195764DDEA97F26 /* ClipboardStore.swift in Sources */,
 				03C41F6394089BAEC7E630D6 /* ClipboardView.swift in Sources */,
+				109922093FBA1163F51F3DA7 /* ClockTimerRequest.swift in Sources */,
+				50E2799647B83B556219637A /* ClockTimerRunner.swift in Sources */,
 				4EBFBA1CC7DA9B22C396DBEC /* CommandArgumentsRow.swift in Sources */,
 				89872774514D83EC2BD60F1E /* CommandCatalog.swift in Sources */,
 				BEAAD72E748375E0039AC90F /* CommandID.swift in Sources */,

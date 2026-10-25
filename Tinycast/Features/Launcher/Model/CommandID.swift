@@ -2,6 +2,7 @@ import Foundation
 
 /// Built-in launcher actions, surfaced alongside the user-authored ones.
 enum CommandID: String, CaseIterable, Sendable {
+    case startClockTimer = "command:start-clock-timer"
     case switchWindowsBackwards = "command:switch-windows-backwards"
     case switchWindows = "command:switch-windows"
     case switchRoom = "command:switch-room"
@@ -29,6 +30,7 @@ enum CommandID: String, CaseIterable, Sendable {
 
     var name: String {
         switch self {
+        case .startClockTimer: return "Start Timer in Clock"
         case .switchWindowsBackwards: return "Switch Windows Backwards"
         case .switchWindows: return "Switch Windows"
         case .switchRoom: return "Switch Room"
@@ -58,6 +60,7 @@ enum CommandID: String, CaseIterable, Sendable {
 
     var sfSymbol: String {
         switch self {
+        case .startClockTimer: return "timer"
         case .switchWindowsBackwards: return "macwindow.on.rectangle"
         case .switchWindows: return "macwindow.on.rectangle"
         case .switchRoom: return "rectangle.3.group"

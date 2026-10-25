@@ -91,3 +91,25 @@ and switching documents cancels the title draft. The Notes persistence tests, li
 passed. In the isolated Dev app, double-click, Enter, Escape and click-away were verified; the
 renamed Markdown file retained its complete body on disk. The disposable test note was removed
 and Dev Notes enablement restored afterward.
+
+## Native Clock timers on 2026-10-25
+
+Version 0.9.7-sequoia.4 adds `timer 10m`, `timer 90s`, `timer 1h30m` and bare minutes.
+The contextual launcher result previews the duration and starts only on activation. The native
+`Tinycast Timer` Shortcut passes the duration to Clock in seconds; Clock owns all countdown,
+sound and stop behavior. The Shortcut is installed locally and exported in compat for reuse.
+See docs/features/clock-timer.md for setup and supported syntax.
+
+All 50 harnesses passed in the macOS 15 exported tree. The updated runner harness passed again
+after lint cleanup. Full-tree SwiftLint completed with no errors and inherited warnings only;
+changed timer sources have no warnings. Debug and Release builds passed with only the existing
+App Intents metadata notice, including macOS 15 binary, weak-glass and signature checks.
+In Dev, entering `timer 10m` displayed the duration without starting a timer. Enter started a
+Clock countdown (09:56 observed), then the test timer was cancelled. `timer 24h` displayed the
+usage hint and did not launch. Dev was quit after testing; primary data was not used by Dev.
+
+The primary app was then stopped normally and promoted to .4. Its .3 bundle is saved as
+`~/Applications/backup/Tinycast before Clock integration.app`, alongside a dated snapshot of
+preferences, application support, caches and settings.json. The preserved official .9.7 binary
+checksum is unchanged. Installed-primary activation also started a Clock timer (09:57 observed);
+that test timer was cancelled afterward.

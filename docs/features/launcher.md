@@ -4,6 +4,9 @@
 
 ## Current Sequoia backports
 
+The local `timer 10m` command delegates timers to Apple's Clock using a native Shortcut.
+See [Clock timer](clock-timer.md) for syntax and setup.
+
 The launcher now uses LauncherOrder, LauncherMatch, EntryNaming and ScriptRomanization from the
 upstream snapshot 06f3bc75. LauncherRankingStore stores decaying frecency and recent search terms;
 Suggestions excludes favorites, bound shortcuts and this Dev app, and can show newly installed apps.

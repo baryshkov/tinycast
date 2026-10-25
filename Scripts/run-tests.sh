@@ -182,6 +182,9 @@ run snippets-test          Tinycast/Platform/NotificationToken.swift \
                            Tinycast/Platform/AccessibilityText.swift \
                            Tinycast/Features/Snippets/Model/*.swift \
                            Tinycast/Features/Snippets/Service/*.swift
+run clock-timer-test       Tinycast/Features/ClockTimer/Model/ClockTimerRequest.swift \
+                           Tinycast/Features/ClockTimer/Service/ClockTimerRunner.swift \
+                           Tinycast/Platform/ProcessExit.swift
 run notes-test             Tinycast/Platform/Signposts.swift \
                            $L/SearchRelevance.swift \
                            Tinycast/Features/Notes/Model/*.swift \

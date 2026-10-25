@@ -59,7 +59,7 @@ final class LauncherCoordinator {
         }
         // Commands dispatch before the palette hides: mode-switching commands keep it open.
         if app.kind == .command {
-            runCommand(app)
+            runCommand(app, searchQuery: searchQuery)
             return
         }
         if app.kind == .customCommand {
@@ -108,8 +108,10 @@ final class LauncherCoordinator {
         }
     }
 
-    private func runCommand(_ entry: AppEntry) {
+    private func runCommand(_ entry: AppEntry, searchQuery: String?) {
         switch CommandCatalog.command(for: entry) {
+        case .startClockTimer:
+            startClockTimer(query: searchQuery ?? "")
         case .switchWindowsBackwards: core.windowSwitchCoordinator.show(backwards: true)
         case .switchWindows: core.windowSwitchCoordinator.show()
         case .switchRoom: core.roomCoordinator.showRooms()
@@ -170,6 +172,23 @@ final class LauncherCoordinator {
     }
 
     // MARK: - Row actions
+
+    private func startClockTimer(query: String) {
+        guard let request = ClockTimerRequest(query: query) else {
+            core.palette.query = "timer "
+            return
+        }
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        Task {
+            if let error = await ClockTimerRunner.run(request) {
+                await core.showNotice(
+                    title: "Couldn’t Start Clock Timer",
+                    message: error + "\n\nThe Shortcut ‘Tinycast Timer’ must run Clock’s Start Timer action"
+                        + " using Shortcut Input as seconds.",
+                    symbol: "timer", tone: .danger)
+            }
+        }
+    }
 
     func resetRanking(for app: AppEntry) {
         ranking.reset(itemKey: app.preferenceKey)

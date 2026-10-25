@@ -40,8 +40,19 @@ struct LauncherScreen: PaletteScreen {
         self.openActions = openActions
         self.scrollToFollow = scrollToFollow
 
-        let results = appIndex.orderedResults(
+        var results = appIndex.orderedResults(
             query: vm.query, visibility: visibility, favorites: favorites)
+        if ClockTimerRequest.recognizes(vm.query),
+            let template = CommandCatalog.entry(for: .startClockTimer), visibility.isVisible(template)
+        {
+            let request = ClockTimerRequest(query: vm.query)
+            let title = request.map { "Start \($0.durationText) timer in Clock" }
+                ?? "Timer — enter a duration, e.g. timer 10m"
+            results.removeAll { $0.id == template.id }
+            results.insert(AppEntry(
+                id: template.id, name: title, url: template.url,
+                bundleID: nil, kind: .command), at: 0)
+        }
         let calc = CalcMemo.evaluate(vm.query, rates: currencyRates.rates)
         let entries = results.map(Row.entry)
         let pinsFavorites = vm.query.trimmingCharacters(in: .whitespaces).isEmpty
